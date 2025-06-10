@@ -8428,11 +8428,26 @@ struct TypeHandler<Map>
     return error;
   }
 
-  static inline void from(const Map &from_type, Token &, Serializer &serializer)
+  static inline void from(const Map &from_type, Token &token, Serializer &serializer)
   {
-    for (auto &token : from_type.tokens.data)
+    if (from_type.tokens.data.empty())
     {
+      token.value_type = Type::ObjectStart;
+      token.value = DataRef("{");
       serializer.write(token);
+      token.name = DataRef("");
+      token.value_type = Type::ObjectEnd;
+      token.value = DataRef("}");
+      serializer.write(token);
+      return;
+    }
+
+    Token first_token = from_type.tokens.data.front();
+    first_token.name = token.name;
+    serializer.write(first_token);
+    for (int i = 1; i < int(from_type.tokens.data.size()); i++)
+    {
+      serializer.write(from_type.tokens.data[i]);
     }
   }
 };

@@ -226,7 +226,39 @@ TEST_CASE("to_clean_map", "json_struct, map")
   REQUIRE(pc.error == JS::Error::NoError);
   REQUIRE(map.castTo<std::string>("Hello", pc) == "Foo");
   REQUIRE(pc.error == JS::Error::NoError);
-  REQUIRE(map.castTo<std::string>("World", pc) == "Bar"); 
+  REQUIRE(map.castTo<std::string>("World", pc) == "Bar");
+}
+
+struct ParsedJsonMap {
+  std::string regularKey;
+  struct {
+    std::string innerKey1;
+    int innerKey2;
+    JS_OBJ(innerKey1, innerKey2);
+  } mapKey;
+  JS_OBJ(regularKey, mapKey);
+};
+
+
+TEST_CASE("nested_map", "json_struct, map")
+{
+  JS::Map nestedMap;
+  JS::ParseContext parseContext;
+  nestedMap.setValue("innerKey1", parseContext, std::string("value1"));
+  nestedMap.setValue("innerKey2", parseContext, 42);
+
+  JS::Map outerMap;
+  outerMap.setValue("regularKey", parseContext, std::string("simpleValue"));
+  outerMap.setValue("mapKey", parseContext, nestedMap);
+
+  ParsedJsonMap parsed_json;
+
+  std::string output_json = JS::serializeStruct(outerMap);
+  JS::ParseContext parseContext2(output_json.data(), output_json.size(), parsed_json);
+  REQUIRE(parseContext2.error == JS::Error::NoError);
+  REQUIRE(parsed_json.regularKey == "simpleValue");
+  REQUIRE(parsed_json.mapKey.innerKey1 == "value1");
+  REQUIRE(parsed_json.mapKey.innerKey2 == 42);
 }
 
 //TEST_CASE("fail_to_compile", "json_struct, map")
