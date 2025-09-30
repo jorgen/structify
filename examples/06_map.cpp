@@ -14,7 +14,7 @@ const char sailboat_json[] = R"json(
   "type" : "sailboat",
   "sail_area_m2" : 106.5,
   "swimming_platform": true,
-  "cabins_count" : 4
+  "cabin_count" : 4
 }
 )json";
 
@@ -35,8 +35,8 @@ struct Sailboat
   std::string type;
   double sail_area_m2;
   bool swimming_platform;
-  int cabins_count;
-  JS_OBJ(type, sail_area_m2, swimming_platform, cabins_count);
+  int cabin_count;
+  JS_OBJ(type, sail_area_m2, swimming_platform, cabin_count);
 };
 
 void handle_car(Car &car)
@@ -70,6 +70,7 @@ void handle_data(const char *data, size_t size)
   {
   case VehicleType::car:
   {
+    std::shared_ptr<int> foo;
     Car car = map.castTo<Car>(parseContext);
     if (parseContext.error != JS::Error::NoError)
     {

@@ -440,6 +440,7 @@ public:
   void allowAsciiType(bool allow);
   void allowNewLineAsTokenDelimiter(bool allow);
   void allowSuperfluousComma(bool allow);
+  void allowComments(bool allow);
 
   void addData(const char *data, size_t size);
   template <size_t N>
@@ -493,6 +494,7 @@ private:
   Error findStartOfNextValue(Type *type, const DataRef &json_data, size_t *chars_ahead);
   Error findDelimiter(const DataRef &json_data, size_t *chars_ahead);
   Error findTokenEnd(const DataRef &json_data, size_t *chars_ahead);
+  Error skipComment(const DataRef &json_data, size_t *chars_ahead);
   void requestMoreData();
   void releaseFirstDataRef();
   Error populateFromDataRef(DataRef &data, Type &type, const DataRef &json_data);
@@ -506,6 +508,7 @@ private:
   bool allow_ascii_properties : 1;
   bool allow_new_lines : 1;
   bool allow_superfluous_comma : 1;
+  bool allow_comments : 1;
   bool expecting_prop_or_annonymous_data : 1;
   bool continue_after_need_more_data : 1;
   size_t cursor_index;
@@ -663,6 +666,7 @@ inline Tokenizer::Tokenizer()
   , allow_ascii_properties(false)
   , allow_new_lines(false)
   , allow_superfluous_comma(false)
+  , allow_comments(false)
   , expecting_prop_or_annonymous_data(false)
   , continue_after_need_more_data(false)
   , cursor_index(0)
@@ -688,6 +692,11 @@ inline void Tokenizer::allowNewLineAsTokenDelimiter(bool allow)
 inline void Tokenizer::allowSuperfluousComma(bool allow)
 {
   allow_superfluous_comma = allow;
+}
+
+inline void Tokenizer::allowComments(bool allow)
+{
+  allow_comments = allow;
 }
 inline void Tokenizer::addData(const char *data, size_t data_size)
 {
@@ -1119,6 +1128,20 @@ inline Error Tokenizer::findStartOfNextValue(Type *type, const DataRef &json_dat
   {
     const char c = json_data.data[current_pos];
     unsigned char lc = Internal::lookup()[(unsigned char)c];
+
+    if (allow_comments && c == '/' && current_pos + 1 < json_data.size && json_data.data[current_pos + 1] == '/')
+    {
+      cursor_index = current_pos + 2;
+      size_t comment_skip;
+      Error comment_error = skipComment(json_data, &comment_skip);
+      if (comment_error != Error::NoError)
+        return comment_error;
+
+      cursor_index += comment_skip;
+      current_pos = cursor_index - 1;
+      continue;
+    }
+
     if (c == '"')
     {
       *type = Type::String;
@@ -1177,6 +1200,20 @@ inline Error Tokenizer::findDelimiter(const DataRef &json_data, size_t *chars_ah
   for (size_t end = cursor_index; end < json_data.size; end++)
   {
     const char c = json_data.data[end];
+
+    if (allow_comments && c == '/' && end + 1 < json_data.size && json_data.data[end + 1] == '/')
+    {
+      cursor_index = end + 2;
+      size_t comment_skip;
+      Error comment_error = skipComment(json_data, &comment_skip);
+      if (comment_error != Error::NoError)
+        return comment_error;
+
+      cursor_index += comment_skip;
+      end = cursor_index - 1;
+      continue;
+    }
+
     if (c == ':')
     {
       if (container_stack.back() != Type::ObjectStart)
@@ -1216,6 +1253,20 @@ inline Error Tokenizer::findTokenEnd(const DataRef &json_data, size_t *chars_ahe
   for (size_t end = cursor_index; end < json_data.size; end++)
   {
     const char c = json_data.data[end];
+
+    if (allow_comments && c == '/' && end + 1 < json_data.size && json_data.data[end + 1] == '/')
+    {
+      cursor_index = end + 2;
+      size_t comment_skip;
+      Error comment_error = skipComment(json_data, &comment_skip);
+      if (comment_error != Error::NoError)
+        return comment_error;
+
+      cursor_index += comment_skip;
+      end = cursor_index - 1;
+      continue;
+    }
+
     if (c == ',')
     {
       expecting_prop_or_annonymous_data = true;
@@ -1243,6 +1294,20 @@ inline Error Tokenizer::findTokenEnd(const DataRef &json_data, size_t *chars_ahe
     {
       *chars_ahead = end + 1 - cursor_index;
       return Error::InvalidToken;
+    }
+  }
+  return Error::NeedMoreData;
+}
+
+inline Error Tokenizer::skipComment(const DataRef &json_data, size_t *chars_ahead)
+{
+  for (size_t current_pos = cursor_index; current_pos < json_data.size; current_pos++)
+  {
+    const char c = json_data.data[current_pos];
+    if (c == '\n')
+    {
+      *chars_ahead = current_pos + 1 - cursor_index;
+      return Error::NoError;
     }
   }
   return Error::NeedMoreData;

@@ -28,6 +28,8 @@ set(unit_test_sources
                            json-tokenizer-fail-test.cpp
                            json-tokenizer-partial-test.cpp
                            json-tokenizer-test.cpp
+                           json-tokenizer-comments-test.cpp
+                           json-struct-comments-test.cpp
                            json-function-test.cpp
                            json-function-test-new.cpp
                            json-function-external-test.cpp

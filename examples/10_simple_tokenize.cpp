@@ -7,9 +7,15 @@
 
 const char json[] = R"json(
 {
-    "key" : "value",
+    // This is a comment
+    "key" : "value", // Another comment
     "number" : 100,
-    "boolean" : true
+    // Comments can be on their own line
+    "boolean" : true,
+    "object" : {
+      "array": [
+      ]
+    }
 }
 )json";
 
@@ -20,6 +26,7 @@ int main()
     bool boolean;
     JS::Error error;
     JS::Tokenizer tokenizer;
+    tokenizer.allowComments(true);  // Enable comment support
     JS::Token token;
     tokenizer.addData(json);
     error = tokenizer.nextToken(token);
