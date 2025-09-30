@@ -1,6 +1,7 @@
 #pragma once
 #include <json_struct/json_struct.h>
 #include "include/nlohmann/json.hpp"
+#include <glaze/glaze.hpp>
 
 struct Friends
 {
@@ -9,6 +10,15 @@ struct Friends
 };
 JS_OBJ_EXT(Friends, id, name);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Friends, id, name);
+
+template <>
+struct glz::meta<Friends> {
+    using T = Friends;
+    static constexpr auto value = glz::object(
+        "id", &T::id,
+        "name", &T::name
+    );
+};
 
 struct JPerson
 {
@@ -42,12 +52,75 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(JPerson, _id, index, guid, isActive, balance,
                                    company, email, phone, address, about, registered, latitude, longitude, tags,
                                    friends, greeting, favoriteFruit);
 
+struct JPersonGlaze
+{
+  std::string id;
+  int index;
+  std::string guid;
+  bool isActive;
+  std::string balance;
+  std::string picture;
+  int age;
+  std::string eyeColor;
+  std::string name;
+  std::string gender;
+  std::string company;
+  std::string email;
+  std::string phone;
+  std::string address;
+  std::string about;
+  std::string registered;
+  float latitude;
+  float longitude;
+  std::vector<std::string> tags;
+  std::vector<Friends> friends;
+  std::string greeting;
+  std::string favoriteFruit;
+
+};
+template <>
+struct glz::meta<JPerson> {
+    using T = JPerson;
+    static constexpr auto value = glz::object(
+        "_id", &T::_id,
+        "index", &T::index,
+        "guid", &T::guid,
+        "isActive", &T::isActive,
+        "balance", &T::balance,
+        "picture", &T::picture,
+        "age", &T::age,
+        "eyeColor", &T::eyeColor,
+        "name", &T::name,
+        "gender", &T::gender,
+        "company", &T::company,
+        "email", &T::email,
+        "phone", &T::phone,
+        "address", &T::address,
+        "about", &T::about,
+        "registered", &T::registered,
+        "latitude", &T::latitude,
+        "longitude", &T::longitude,
+        "tags", &T::tags,
+        "friends", &T::friends,
+        "greeting", &T::greeting,
+        "favoriteFruit", &T::favoriteFruit
+    );
+};
+
 struct SmallPerson
 {
   std::string name;
 };
 JS_OBJ_EXT(SmallPerson, name);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SmallPerson, name);
+
+template <>
+struct glz::meta<SmallPerson> {
+    using T = SmallPerson;
+    static constexpr auto value = glz::object(
+        "name", &T::name
+    );
+};
 
 const char generatedJsonObject[] = R"gen_test_json({
     "_id": "59404dbcaf79371edd5f3324",

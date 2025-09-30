@@ -8,6 +8,7 @@
 #include "include/rapidjson/document.h"
 #include "include/simdjson/simdjson.h"
 #include "include/nlohmann/json.hpp"
+// #include <glaze/glaze.hpp>
 
 TEST_CASE("Benchmarks", "[performance]")
 {
@@ -74,7 +75,7 @@ TEST_CASE("Benchmarks", "[performance]")
     const char *json = generatedJsonObject;
     SmallPerson smallPerson;
     simdjson::dom::element document = parser.parse(json, sizeof(generatedJsonObject)-1);
-    smallPerson.name = std::string(document["name"].get_string().first);
+    smallPerson.name = std::string(document["name"].get_string().value());
     return smallPerson;
   };
   
@@ -94,6 +95,16 @@ TEST_CASE("Benchmarks", "[performance]")
     return person;
   };
 
+  // BENCHMARK("Glaze_SmallStruct_Object")
+  // {
+  //   SmallPerson smallPerson;
+  //   auto result = glz::read_json(smallPerson, std::string_view(generatedJsonObject, sizeof(generatedJsonObject) -
+  //   1)); if (result) {
+  //     fprintf(stderr, "Failed to parse document with glaze: %s\n", glz::format_error(result,
+  //     generatedJsonObject).c_str());
+  //   }
+  //   return smallPerson;
+  // };
 
   BENCHMARK("JsonStruct_FullStruct_Object")
   {
@@ -152,41 +163,41 @@ TEST_CASE("Benchmarks", "[performance]")
     const char *json = generatedJsonObject;
     JPerson person;
     simdjson::dom::element d = parser.parse(json, sizeof(generatedJsonObject)-1);
-    person._id = std::string(d["_id"].get_string().first);
+    person._id = std::string(d["_id"].get_string().value());
     person.index = int(d["index"].get_int64());
-    person.guid = std::string(d["guid"].get_string().first);
+    person.guid = std::string(d["guid"].get_string().value());
     person.isActive = d["isActive"].get_bool();
-    person.balance = std::string(d["balance"].get_string().first);
-    person.picture = std::string(d["picture"].get_string().first);
+    person.balance = std::string(d["balance"].get_string().value());
+    person.picture = std::string(d["picture"].get_string().value());
     person.age = int(d["age"].get_int64());
-    person.eyeColor = std::string(d["eyeColor"].get_string().first);
-    person.name = std::string(d["name"].get_string().first);
-    person.gender = std::string(d["gender"].get_string().first);
-    person.company = std::string(d["company"].get_string().first);
-    person.email = std::string(d["email"].get_string().first);
-    person.phone = std::string(d["phone"].get_string().first);
-    person.address = std::string(d["address"].get_string().first);
-    person.about = std::string(d["about"].get_string().first);
-    person.registered = std::string(d["registered"].get_string().first);
+    person.eyeColor = std::string(d["eyeColor"].get_string().value());
+    person.name = std::string(d["name"].get_string().value());
+    person.gender = std::string(d["gender"].get_string().value());
+    person.company = std::string(d["company"].get_string().value());
+    person.email = std::string(d["email"].get_string().value());
+    person.phone = std::string(d["phone"].get_string().value());
+    person.address = std::string(d["address"].get_string().value());
+    person.about = std::string(d["about"].get_string().value());
+    person.registered = std::string(d["registered"].get_string().value());
     person.latitude = float(d["latitude"].get_double());
     person.longitude = float(d["longitude"].get_double());
-    auto tags = d["tags"].get_array().first;
+    auto tags = d["tags"].get_array().value();
     person.tags.reserve(tags.size());
     for (auto it = tags.begin(); it != tags.end(); ++it)
     {
-      person.tags.emplace_back((*it).get_string().first);
+      person.tags.emplace_back((*it).get_string().value());
     }
-    auto friends = d["friends"].get_array().first;
+    auto friends = d["friends"].get_array().value();
     person.friends.reserve(friends.size());
     for (auto it = friends.begin(); it != friends.end(); ++it)
     {
       Friends f;
-      f.id = int((*it)["id"].get_int64().first);
-      f.name = std::string((*it)["name"].get_string().first);
+      f.id = int((*it)["id"].get_int64().value());
+      f.name = std::string((*it)["name"].get_string().value());
       person.friends.push_back(std::move(f));
     }
-    person.greeting = std::string(d["greeting"].get_string().first);
-    person.favoriteFruit = std::string(d["favoriteFruit"].get_string().first);
+    person.greeting = std::string(d["greeting"].get_string().value());
+    person.favoriteFruit = std::string(d["favoriteFruit"].get_string().value());
     return person;
   };
 
@@ -196,6 +207,17 @@ TEST_CASE("Benchmarks", "[performance]")
     auto person = d.get<JPerson>();
     return person;
   };
+
+  // BENCHMARK("Glaze_FullStruct_Object")
+  // {
+  //   JPerson person;
+  //   auto result = glz::read_json(person, std::string_view(generatedJsonObject, sizeof(generatedJsonObject) - 1));
+  //   if (result) {
+  //     fprintf(stderr, "Failed to parse document with glaze: %s\n", glz::format_error(result,
+  //     generatedJsonObject).c_str());
+  //   }
+  //   return person;
+  // };
 
   BENCHMARK("Tokenizer_SmallStruct_Array")
   {
@@ -264,7 +286,7 @@ TEST_CASE("Benchmarks", "[performance]")
     const char *json = generatedJsonArray;
     SmallPerson smallPerson;
     simdjson::dom::element document = parser.parse(json, sizeof(generatedJsonArray)-1);
-    smallPerson.name = std::string(document.at(1)["name"].get_string().first);
+    smallPerson.name = std::string(document.at(1)["name"].get_string().value());
     return smallPerson;
   };
 
@@ -283,6 +305,17 @@ TEST_CASE("Benchmarks", "[performance]")
     auto people = d.get<std::vector<SmallPerson>>();
     return people;
   };
+
+  // BENCHMARK("Glaze_SmallStruct_Array")
+  // {
+  //   std::vector<SmallPerson> people;
+  //   auto result = glz::read_json(people, std::string_view(generatedJsonArray, sizeof(generatedJsonArray) - 1));
+  //   if (result) {
+  //     fprintf(stderr, "Failed to parse document with glaze: %s\n", glz::format_error(result,
+  //     generatedJsonArray).c_str());
+  //   }
+  //   return people;
+  // };
   
   BENCHMARK("JsonStruct_FullStruct_Array")
   {
@@ -341,41 +374,41 @@ TEST_CASE("Benchmarks", "[performance]")
     const char *json = generatedJsonArray;
     JPerson person;
     simdjson::dom::element d = parser.parse(json, sizeof(generatedJsonArray)-1);
-    person._id = std::string(d.at(1)["_id"].get_string().first);
+    person._id = std::string(d.at(1)["_id"].get_string().value());
     person.index = int(d.at(1)["index"].get_int64());
-    person.guid = std::string(d.at(1)["guid"].get_string().first);
+    person.guid = std::string(d.at(1)["guid"].get_string().value());
     person.isActive = d.at(1)["isActive"].get_bool();
-    person.balance = std::string(d.at(1)["balance"].get_string().first);
-    person.picture = std::string(d.at(1)["picture"].get_string().first);
+    person.balance = std::string(d.at(1)["balance"].get_string().value());
+    person.picture = std::string(d.at(1)["picture"].get_string().value());
     person.age = int(d.at(1)["age"].get_int64());
-    person.eyeColor = std::string(d.at(1)["eyeColor"].get_string().first);
-    person.name = std::string(d.at(1)["name"].get_string().first);
-    person.gender = std::string(d.at(1)["gender"].get_string().first);
-    person.company = std::string(d.at(1)["company"].get_string().first);
-    person.email = std::string(d.at(1)["email"].get_string().first);
-    person.phone = std::string(d.at(1)["phone"].get_string().first);
-    person.address = std::string(d.at(1)["address"].get_string().first);
-    person.about = std::string(d.at(1)["about"].get_string().first);
-    person.registered = std::string(d.at(1)["registered"].get_string().first);
+    person.eyeColor = std::string(d.at(1)["eyeColor"].get_string().value());
+    person.name = std::string(d.at(1)["name"].get_string().value());
+    person.gender = std::string(d.at(1)["gender"].get_string().value());
+    person.company = std::string(d.at(1)["company"].get_string().value());
+    person.email = std::string(d.at(1)["email"].get_string().value());
+    person.phone = std::string(d.at(1)["phone"].get_string().value());
+    person.address = std::string(d.at(1)["address"].get_string().value());
+    person.about = std::string(d.at(1)["about"].get_string().value());
+    person.registered = std::string(d.at(1)["registered"].get_string().value());
     person.latitude = float(d.at(1)["latitude"].get_double());
     person.longitude = float(d.at(1)["longitude"].get_double());
-    auto tags = d.at(1)["tags"].get_array().first;
+    auto tags = d.at(1)["tags"].get_array().value();
     person.tags.reserve(tags.size());
     for (auto it = tags.begin(); it != tags.end(); ++it)
     {
-      person.tags.emplace_back((*it).get_string().first);
+      person.tags.emplace_back((*it).get_string().value());
     }
-    auto friends = d.at(1)["friends"].get_array().first;
+    auto friends = d.at(1)["friends"].get_array().value();
     person.friends.reserve(friends.size());
     for (auto it = friends.begin(); it != friends.end(); ++it)
     {
       Friends f;
-      f.id = int((*it)["id"].get_int64().first);
-      f.name = std::string((*it)["name"].get_string().first);
+      f.id = int((*it)["id"].get_int64().value());
+      f.name = std::string((*it)["name"].get_string().value());
       person.friends.push_back(std::move(f));
     }
-    person.greeting = std::string(d.at(1)["greeting"].get_string().first);
-    person.favoriteFruit = std::string(d.at(1)["favoriteFruit"].get_string().first);
+    person.greeting = std::string(d.at(1)["greeting"].get_string().value());
+    person.favoriteFruit = std::string(d.at(1)["favoriteFruit"].get_string().value());
     return person;
   };
 
@@ -385,6 +418,17 @@ TEST_CASE("Benchmarks", "[performance]")
     auto people = d.get<std::vector<JPerson>>();
     return people;
   };
+
+  // BENCHMARK("Glaze_FullStruct_Array")
+  // {
+  //   std::vector<JPerson> people;
+  //   auto result = glz::read_json(people, std::string_view(generatedJsonArray, sizeof(generatedJsonArray) - 1));
+  //   if (result) {
+  //     fprintf(stderr, "Failed to parse document with glaze: %s\n", glz::format_error(result,
+  //     generatedJsonArray).c_str());
+  //   }
+  //   return people;
+  // };
 
 }
 
