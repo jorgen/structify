@@ -23,7 +23,7 @@
 #include <json_struct/json_struct.h>
 #include <tuple>
 
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 
 #define SUB_ELEM(elem) SubElem<elem>(#elem)
 #define SUB_LIST(...) std::make_tuple(__VA_ARGS__)

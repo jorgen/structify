@@ -22,7 +22,7 @@
 
 #include <json_struct/json_struct.h>
 #include "tokenizer-test-util.h"
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 
 namespace json_tokenizer_comments_test
 {

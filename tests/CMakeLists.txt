@@ -1,5 +1,7 @@
 include_directories(${JSON_STRUCT_INCLUDE_DIR})
 
+include(Catch)
+
 include(CMakeRC.cmake)
 
 cmrc_add_resource_library(
@@ -9,7 +11,6 @@ cmrc_add_resource_library(
     generated.json
     )
 
-add_library(catch_main STATIC catch-main.cpp)
 set(unit_test_sources
                            json-struct-test.cpp
                            json-struct-test-new.cpp
@@ -60,20 +61,22 @@ set(unit_test_sources
 
 add_executable(unit-tests ${unit_test_sources})
 set_compiler_flags_for_target(unit-tests)
-target_link_libraries(unit-tests PRIVATE catch_main external_json::rc)
+target_link_libraries(unit-tests PUBLIC Catch2::Catch2WithMain external_json::rc)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0" AND NOT JSON_STRUCT_OPT_DISABLE_PCH)
-  target_precompile_headers(unit-tests PRIVATE ../include/json_struct/json_struct.h catch2/catch.hpp)
+  target_precompile_headers(unit-tests PRIVATE ../include/json_struct/json_struct.h)
 endif()
-add_test(NAME unit-tests COMMAND unit-tests)
+catch_discover_tests(unit-tests)
 
 # Tests for zero value floating points (both negative and positive zeros).
 # The tests are run with different compiler options for floating point math.
 add_executable(zero-value-test-fp-default zero-value-test.cpp)
+target_link_libraries(zero-value-test-fp-default Catch2::Catch2WithMain)
 set_compiler_flags_for_target(zero-value-test-fp-default)
 add_executable(zero-value-test-fp-fast zero-value-test.cpp)
+target_link_libraries(zero-value-test-fp-fast Catch2::Catch2WithMain)
 set_compiler_flags_for_target(zero-value-test-fp-fast)
-add_test(NAME zero-value-test-fp-default COMMAND zero-value-test-fp-default)
-add_test(NAME zero-value-test-fp-fast COMMAND zero-value-test-fp-fast)
+catch_discover_tests(zero-value-test-fp-default)
+catch_discover_tests(zero-value-test-fp-fast)
 
 if (MSVC)
   target_compile_options(zero-value-test-fp-fast PRIVATE /fp:fast)
@@ -89,9 +92,9 @@ if ("${CMAKE_CXX_COMPILE_FEATURES}" MATCHES ".*cxx_std_17.*")
   set_compiler_flags_for_target(unit-tests-cxx17)
   set_property(TARGET unit-tests-cxx17 PROPERTY CXX_STANDARD 17)
   target_compile_features(unit-tests-cxx17 PUBLIC cxx_std_17)
-  target_link_libraries(unit-tests-cxx17 PRIVATE catch_main external_json::rc)
+  target_link_libraries(unit-tests-cxx17 PUBLIC Catch2::Catch2WithMain external_json::rc)
+  catch_discover_tests(unit-tests-cxx17)
 endif()
 
 #add_executable(unit-tests-experimental json-struct-array-varlength.cpp)
 #target_link_libraries(unit-tests-experimental PRIVATE catch_main)
-

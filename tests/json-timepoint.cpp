@@ -1,4 +1,4 @@
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 
 #include <chrono>
 #define JS_STD_TIMEPOINT 1

@@ -1,6 +1,6 @@
 #include <json_struct/json_struct.h>
 
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 
 const char json_data[] = R"json(
 {

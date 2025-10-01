@@ -52,6 +52,17 @@ if(JSON_STRUCT_OPT_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
 
+include(FetchContent)
+
+FetchContent_Declare(
+catch2
+GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+GIT_TAG v3.11.0
+GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(catch2)
+
 ### Tests
 if(JSON_STRUCT_OPT_BUILD_TESTS)
   enable_testing()

@@ -1,5 +1,5 @@
 #include <json_struct/json_struct.h>
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 
 #define JS_STL_UNORDERED_SET
 #include <json_struct/json_struct.h>

@@ -22,7 +22,7 @@
 
 #include <json_struct/json_struct.h>
 
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 #include <unordered_map>
 
 namespace json_struct_test
@@ -118,8 +118,7 @@ struct JsonData1
             JS_MEMBER(subStruct2), JS_MEMBER(Field3), JS_MEMBER(NodeWithLiteral));
 };
 
-TEST_CASE("check_json_tree_nodes"
-          "json_struct")
+TEST_CASE("check_json_tree_nodes_json_struct")
 {
   JS::ParseContext context(json_data1);
   JsonData1 data;
@@ -127,6 +126,11 @@ TEST_CASE("check_json_tree_nodes"
 
   data.TestStruct.optional_with_value = 5;
   REQUIRE(data.StringNode == "Some test data");
+  if (error != JS::Error::NoError)
+  {
+    auto str = context.makeErrorString();
+    fprintf(stderr, "Error: %s\n", str.c_str());
+  }
   REQUIRE(error == JS::Error::NoError);
 
   REQUIRE(data.Field3 == 243);

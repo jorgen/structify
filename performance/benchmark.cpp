@@ -3,7 +3,7 @@
 #include <json_struct/json_struct.h>
 #include <chrono>
 
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 
 #include "include/rapidjson/document.h"
 #include "include/simdjson/simdjson.h"

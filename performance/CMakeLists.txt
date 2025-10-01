@@ -1,5 +1,3 @@
-include(FetchContent)
-
 FetchContent_Declare(
         glaze
         GIT_REPOSITORY https://github.com/stephenberry/glaze.git
@@ -8,9 +6,6 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(glaze)
-if(MSVC)
-    add_compile_options(/arch:AVX2)
-endif()
 
 add_executable(benchmark
     benchmark.cpp
@@ -23,9 +18,7 @@ if (MSVC)
 else()
   target_compile_options(benchmark PRIVATE -w)
 endif()
-target_link_libraries(benchmark PRIVATE glaze::glaze)
+target_link_libraries(benchmark PRIVATE glaze::glaze Catch2::Catch2WithMain )
 
-add_library(catch_main_benchmark STATIC catch-main.cpp)
-target_compile_definitions(catch_main_benchmark PRIVATE CATCH_CONFIG_ENABLE_BENCHMARKING)
-target_link_libraries(benchmark PRIVATE catch_main_benchmark)
-                
+target_compile_definitions(benchmark PRIVATE CATCH_CONFIG_ENABLE_BENCHMARKING)
+

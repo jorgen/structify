@@ -2,7 +2,7 @@
 #ifdef JS_STD_OPTIONAL
 #include <optional>
 #endif
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 
 namespace
 {

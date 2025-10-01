@@ -21,7 +21,7 @@
  */
 
 #include <json_struct/json_struct.h>
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 #include <unordered_map>
 
 namespace json_struct_comments_test
