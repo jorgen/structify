@@ -670,6 +670,230 @@ inline size_t skipWhitespaceNEON(const char* data, size_t length)
 
   return current - data;
 }
+
+inline size_t findAsciiEndNEON(const char* data, size_t length)
+{
+  const char* current = data;
+  const char* end = data + length;
+
+  const uint8x16_t char_A = vdupq_n_u8('A');
+  const uint8x16_t char_Z = vdupq_n_u8('Z');
+  const uint8x16_t char_a = vdupq_n_u8('a');
+  const uint8x16_t char_z = vdupq_n_u8('z');
+  const uint8x16_t char_0 = vdupq_n_u8('0');
+  const uint8x16_t char_9 = vdupq_n_u8('9');
+  const uint8x16_t char_underscore = vdupq_n_u8('_');
+  const uint8x16_t char_caret = vdupq_n_u8('^');
+  const uint8x16_t char_apostrophe = vdupq_n_u8('`');
+
+  while (current + 16 <= end) {
+    uint8x16_t chunk = vld1q_u8(reinterpret_cast<const uint8_t*>(current));
+
+    // Check A-Z
+    uint8x16_t ge_A = vcgeq_u8(chunk, char_A);
+    uint8x16_t le_Z = vcleq_u8(chunk, char_Z);
+    uint8x16_t is_upper = vandq_u8(ge_A, le_Z);
+
+    // Check a-z
+    uint8x16_t ge_a = vcgeq_u8(chunk, char_a);
+    uint8x16_t le_z = vcleq_u8(chunk, char_z);
+    uint8x16_t is_lower = vandq_u8(ge_a, le_z);
+
+    // Check 0-9
+    uint8x16_t ge_0 = vcgeq_u8(chunk, char_0);
+    uint8x16_t le_9 = vcleq_u8(chunk, char_9);
+    uint8x16_t is_digit = vandq_u8(ge_0, le_9);
+
+    // Check special chars: _, ^, `
+    uint8x16_t is_underscore = vceqq_u8(chunk, char_underscore);
+    uint8x16_t is_caret = vceqq_u8(chunk, char_caret);
+    uint8x16_t is_apostrophe = vceqq_u8(chunk, char_apostrophe);
+
+    // Combine all valid characters
+    uint8x16_t valid_chars = vorrq_u8(is_upper, is_lower);
+    valid_chars = vorrq_u8(valid_chars, is_digit);
+    valid_chars = vorrq_u8(valid_chars, is_underscore);
+    valid_chars = vorrq_u8(valid_chars, is_caret);
+    valid_chars = vorrq_u8(valid_chars, is_apostrophe);
+
+    // Find invalid characters
+    uint8x16_t invalid_chars = vmvnq_u8(valid_chars);
+
+    uint64x2_t invalid_u64 = vreinterpretq_u64_u8(invalid_chars);
+    uint64_t invalid_scalar = vgetq_lane_u64(invalid_u64, 0) | vgetq_lane_u64(invalid_u64, 1);
+
+    if (JSON_STRUCT_LIKELY(invalid_scalar != 0)) {
+      uint32x4_t invalid_u32 = vreinterpretq_u32_u8(invalid_chars);
+      uint32_t invalid_bits[4];
+      vst1q_u32(invalid_bits, invalid_u32);
+
+      for (int i = 0; i < 4; i++) {
+        if (invalid_bits[i] != 0) {
+          for (int j = 0; j < 4; j++) {
+            if ((invalid_bits[i] >> (j * 8)) & 0xFF) {
+              current += i * 4 + j;
+              return current - data;
+            }
+          }
+        }
+      }
+    }
+    current += 16;
+  }
+
+  while (current < end) {
+    char c = *current;
+    if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+          (c >= '0' && c <= '9') || c == '_' || c == '^' || c == '`')) {
+      break;
+    }
+    current++;
+  }
+
+  return current - data;
+}
+
+inline size_t skipCommentNEON(const char* data, size_t length)
+{
+  const char* current = data;
+  const char* end = data + length;
+  const uint8x16_t newline = vdupq_n_u8('\n');
+
+  while (current + 16 <= end) {
+    uint8x16_t chunk = vld1q_u8(reinterpret_cast<const uint8_t*>(current));
+    uint8x16_t is_newline = vceqq_u8(chunk, newline);
+
+    uint64x2_t newline_u64 = vreinterpretq_u64_u8(is_newline);
+    uint64_t newline_scalar = vgetq_lane_u64(newline_u64, 0) | vgetq_lane_u64(newline_u64, 1);
+
+    if (JSON_STRUCT_LIKELY(newline_scalar != 0)) {
+      uint32x4_t newline_u32 = vreinterpretq_u32_u8(is_newline);
+      uint32_t newline_bits[4];
+      vst1q_u32(newline_bits, newline_u32);
+
+      for (int i = 0; i < 4; i++) {
+        if (newline_bits[i] != 0) {
+          for (int j = 0; j < 4; j++) {
+            if ((newline_bits[i] >> (j * 8)) & 0xFF) {
+              current += i * 4 + j;
+              return current - data + 1;
+            }
+          }
+        }
+      }
+    }
+    current += 16;
+  }
+
+  while (current < end) {
+    if (*current == '\n') {
+      return current - data + 1;
+    }
+    current++;
+  }
+
+  return current - data;
+}
+#endif
+
+#ifdef JSON_STRUCT_HAS_SSE2
+
+inline size_t findAsciiEndSIMD(const char* data, size_t length)
+{
+  const char* current = data;
+  const char* end = data + length;
+
+  const __m128i char_A = _mm_set1_epi8('A');
+  const __m128i char_Z = _mm_set1_epi8('Z');
+  const __m128i char_a = _mm_set1_epi8('a');
+  const __m128i char_z = _mm_set1_epi8('z');
+  const __m128i char_0 = _mm_set1_epi8('0');
+  const __m128i char_9 = _mm_set1_epi8('9');
+  const __m128i char_underscore = _mm_set1_epi8('_');
+  const __m128i char_caret = _mm_set1_epi8('^');
+  const __m128i char_apostrophe = _mm_set1_epi8('`');
+
+  while (current + 16 <= end) {
+    __m128i chunk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current));
+
+    // Check A-Z (unsigned comparison)
+    __m128i ge_A = _mm_cmpeq_epi8(_mm_max_epu8(chunk, char_A), chunk);
+    __m128i le_Z = _mm_cmpeq_epi8(_mm_min_epu8(chunk, char_Z), chunk);
+    __m128i is_upper = _mm_and_si128(ge_A, le_Z);
+
+    // Check a-z
+    __m128i ge_a = _mm_cmpeq_epi8(_mm_max_epu8(chunk, char_a), chunk);
+    __m128i le_z = _mm_cmpeq_epi8(_mm_min_epu8(chunk, char_z), chunk);
+    __m128i is_lower = _mm_and_si128(ge_a, le_z);
+
+    // Check 0-9
+    __m128i ge_0 = _mm_cmpeq_epi8(_mm_max_epu8(chunk, char_0), chunk);
+    __m128i le_9 = _mm_cmpeq_epi8(_mm_min_epu8(chunk, char_9), chunk);
+    __m128i is_digit = _mm_and_si128(ge_0, le_9);
+
+    // Check special chars
+    __m128i is_underscore = _mm_cmpeq_epi8(chunk, char_underscore);
+    __m128i is_caret = _mm_cmpeq_epi8(chunk, char_caret);
+    __m128i is_apostrophe = _mm_cmpeq_epi8(chunk, char_apostrophe);
+
+    // Combine all valid characters
+    __m128i valid_chars = _mm_or_si128(is_upper, is_lower);
+    valid_chars = _mm_or_si128(valid_chars, is_digit);
+    valid_chars = _mm_or_si128(valid_chars, is_underscore);
+    valid_chars = _mm_or_si128(valid_chars, is_caret);
+    valid_chars = _mm_or_si128(valid_chars, is_apostrophe);
+
+    int mask = _mm_movemask_epi8(valid_chars);
+
+    if (JSON_STRUCT_LIKELY(mask != 0xFFFF)) {
+      mask = ~mask & 0xFFFF;
+      int offset = bit_scan_forward(mask);
+      current += offset;
+      return current - data;
+    }
+    current += 16;
+  }
+
+  while (current < end) {
+    char c = *current;
+    if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+          (c >= '0' && c <= '9') || c == '_' || c == '^' || c == '`')) {
+      break;
+    }
+    current++;
+  }
+
+  return current - data;
+}
+
+inline size_t skipCommentSIMD(const char* data, size_t length)
+{
+  const char* current = data;
+  const char* end = data + length;
+  const __m128i newline = _mm_set1_epi8('\n');
+
+  while (current + 16 <= end) {
+    __m128i chunk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current));
+    __m128i cmp = _mm_cmpeq_epi8(chunk, newline);
+    int mask = _mm_movemask_epi8(cmp);
+
+    if (JSON_STRUCT_LIKELY(mask != 0)) {
+      int offset = bit_scan_forward(mask);
+      current += offset;
+      return current - data + 1;
+    }
+    current += 16;
+  }
+
+  while (current < end) {
+    if (*current == '\n') {
+      return current - data + 1;
+    }
+    current++;
+  }
+
+  return current - data;
+}
 #endif
 
 } // namespace Internal
@@ -1381,6 +1605,33 @@ inline Error Tokenizer::findAsciiEnd(const DataRef &json_data, size_t *chars_ahe
 {
   assert(property_type == Type::Ascii);
   size_t end = cursor_index;
+
+#ifdef JSON_STRUCT_HAS_NEON
+  if (JSON_STRUCT_LIKELY(json_data.size - cursor_index >= 16)) {
+    size_t consumed = Internal::findAsciiEndNEON(
+      json_data.data + cursor_index,
+      json_data.size - cursor_index);
+
+    if (consumed < json_data.size - cursor_index) {
+      *chars_ahead = consumed;
+      return Error::NoError;
+    }
+    end = cursor_index + consumed;
+  }
+#elif defined(JSON_STRUCT_HAS_SSE2)
+  if (JSON_STRUCT_LIKELY(json_data.size - cursor_index >= 16)) {
+    size_t consumed = Internal::findAsciiEndSIMD(
+      json_data.data + cursor_index,
+      json_data.size - cursor_index);
+
+    if (consumed < json_data.size - cursor_index) {
+      *chars_ahead = consumed;
+      return Error::NoError;
+    }
+    end = cursor_index + consumed;
+  }
+#endif
+
   JSON_STRUCT_PREFETCH(json_data.data + end + 64);
 
   while (JSON_STRUCT_LIKELY(end < json_data.size))
@@ -1644,6 +1895,32 @@ inline Error Tokenizer::findTokenEnd(const DataRef &json_data, size_t *chars_ahe
 
 inline Error Tokenizer::skipComment(const DataRef &json_data, size_t *chars_ahead)
 {
+#ifdef JSON_STRUCT_HAS_NEON
+  if (JSON_STRUCT_LIKELY(json_data.size - cursor_index >= 16)) {
+    size_t consumed = Internal::skipCommentNEON(
+      json_data.data + cursor_index,
+      json_data.size - cursor_index);
+
+    if (consumed > 0 && cursor_index + consumed <= json_data.size &&
+        json_data.data[cursor_index + consumed - 1] == '\n') {
+      *chars_ahead = consumed;
+      return Error::NoError;
+    }
+  }
+#elif defined(JSON_STRUCT_HAS_SSE2)
+  if (JSON_STRUCT_LIKELY(json_data.size - cursor_index >= 16)) {
+    size_t consumed = Internal::skipCommentSIMD(
+      json_data.data + cursor_index,
+      json_data.size - cursor_index);
+
+    if (consumed > 0 && cursor_index + consumed <= json_data.size &&
+        json_data.data[cursor_index + consumed - 1] == '\n') {
+      *chars_ahead = consumed;
+      return Error::NoError;
+    }
+  }
+#endif
+
   const char* start = json_data.data + cursor_index;
   const char* end = json_data.data + json_data.size;
   const char* found = std::find(start, end, '\n');
