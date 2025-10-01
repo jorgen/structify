@@ -1354,22 +1354,12 @@ inline Error Tokenizer::findStringEnd(const DataRef &json_data, size_t *chars_ah
       continue;
     }
 
-    while (JSON_STRUCT_LIKELY(end + 4 < json_data.size))
-    {
-      unsigned char lc = Internal::lookup()[(unsigned char)json_data.data[end]];
-      if (JSON_STRUCT_UNLIKELY(lc == Internal::StrEndOrBackSlash))
-        break;
-      lc = Internal::lookup()[(unsigned char)json_data.data[++end]];
-      if (JSON_STRUCT_UNLIKELY(lc == Internal::StrEndOrBackSlash))
-        break;
-      lc = Internal::lookup()[(unsigned char)json_data.data[++end]];
-      if (JSON_STRUCT_UNLIKELY(lc == Internal::StrEndOrBackSlash))
-        break;
-      lc = Internal::lookup()[(unsigned char)json_data.data[++end]];
-      if (JSON_STRUCT_UNLIKELY(lc == Internal::StrEndOrBackSlash))
-        break;
-      end++;
-    }
+    const char* search_start = json_data.data + end;
+    const char* search_end = json_data.data + json_data.size;
+    const char* found = std::find_if(search_start, search_end, [](char c) {
+      return Internal::lookup()[(unsigned char)c] == Internal::StrEndOrBackSlash;
+    });
+    end = found - json_data.data;
     if (JSON_STRUCT_UNLIKELY(end >= json_data.size))
       break;
     char c = json_data.data[end];
@@ -1395,22 +1385,16 @@ inline Error Tokenizer::findAsciiEnd(const DataRef &json_data, size_t *chars_ahe
 
   while (JSON_STRUCT_LIKELY(end < json_data.size))
   {
-    while (end + 4 < json_data.size)
-    {
-      unsigned char lc = Internal::lookup()[(unsigned char)json_data.data[end]];
-      if (!(lc & (Internal::AsciiLetters | Internal::Digits | Internal::HatUnderscoreAprostoph)))
-        break;
-      lc = Internal::lookup()[(unsigned char)json_data.data[++end]];
-      if (!(lc & (Internal::AsciiLetters | Internal::Digits | Internal::HatUnderscoreAprostoph)))
-        break;
-      lc = Internal::lookup()[(unsigned char)json_data.data[++end]];
-      if (!(lc & (Internal::AsciiLetters | Internal::Digits | Internal::HatUnderscoreAprostoph)))
-        break;
-      lc = Internal::lookup()[(unsigned char)json_data.data[++end]];
-      if (!(lc & (Internal::AsciiLetters | Internal::Digits | Internal::HatUnderscoreAprostoph)))
-        break;
-      end++;
-    }
+    const char* search_start = json_data.data + end;
+    const char* search_end = json_data.data + json_data.size;
+    const char* found = std::find_if(search_start, search_end, [](char c) {
+      unsigned char lc = Internal::lookup()[(unsigned char)c];
+      return !(lc & (Internal::AsciiLetters | Internal::Digits | Internal::HatUnderscoreAprostoph));
+    });
+    end = found - json_data.data;
+
+    if (end >= json_data.size)
+      break;
 
     char ascii_code = json_data.data[end];
     if ((ascii_code >= 'A' && ascii_code <= 'Z') || (ascii_code >= '^' && ascii_code <= 'z') ||
@@ -1462,35 +1446,18 @@ inline Error Tokenizer::findNumberEnd(const DataRef &json_data, size_t *chars_ah
   size_t end = cursor_index;
   JSON_STRUCT_PREFETCH(json_data.data + end + 64);
 
-  while (JSON_STRUCT_LIKELY(end + 4 < json_data.size))
-  {
-    unsigned char lc = Internal::lookup()[(unsigned char)json_data.data[end]];
-    if (JSON_STRUCT_UNLIKELY(!(lc & (Internal::NumberEnd))))
-      break;
-    lc = Internal::lookup()[(unsigned char)json_data.data[++end]];
-    if (JSON_STRUCT_UNLIKELY(!(lc & (Internal::NumberEnd))))
-      break;
-    lc = Internal::lookup()[(unsigned char)json_data.data[++end]];
-    if (JSON_STRUCT_UNLIKELY(!(lc & (Internal::NumberEnd))))
-      break;
-    lc = Internal::lookup()[(unsigned char)json_data.data[++end]];
-    if (JSON_STRUCT_UNLIKELY(!(lc & (Internal::NumberEnd))))
-      break;
-    end++;
-  }
+  const char* search_start = json_data.data + end;
+  const char* search_end = json_data.data + json_data.size;
+  const char* found = std::find_if(search_start, search_end, [](char c) {
+    unsigned char lc = Internal::lookup()[(unsigned char)c];
+    return !(lc & Internal::NumberEnd);
+  });
 
-  while (JSON_STRUCT_LIKELY(end < json_data.size))
+  end = found - json_data.data;
+  if (end < json_data.size)
   {
-    unsigned char lc = Internal::lookup()[(unsigned char)json_data.data[end]];
-    if (JSON_STRUCT_LIKELY(lc & (Internal::NumberEnd)))
-    {
-      end++;
-    }
-    else
-    {
-      *chars_ahead = end - cursor_index;
-      return Error::NoError;
-    }
+    *chars_ahead = end - cursor_index;
+    return Error::NoError;
   }
   return Error::NeedMoreData;
 }
@@ -1677,14 +1644,14 @@ inline Error Tokenizer::findTokenEnd(const DataRef &json_data, size_t *chars_ahe
 
 inline Error Tokenizer::skipComment(const DataRef &json_data, size_t *chars_ahead)
 {
-  for (size_t current_pos = cursor_index; current_pos < json_data.size; current_pos++)
+  const char* start = json_data.data + cursor_index;
+  const char* end = json_data.data + json_data.size;
+  const char* found = std::find(start, end, '\n');
+
+  if (found != end)
   {
-    const char c = json_data.data[current_pos];
-    if (c == '\n')
-    {
-      *chars_ahead = current_pos + 1 - cursor_index;
-      return Error::NoError;
-    }
+    *chars_ahead = (found - start) + 1;
+    return Error::NoError;
   }
   return Error::NeedMoreData;
 }
