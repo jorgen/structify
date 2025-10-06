@@ -390,7 +390,7 @@ static constexpr unsigned char lookup_table[256] = {
     /*16*/ 0,       0,       0,       0,       0,       0,       0,       0,
     /*24*/ 0,       0,       0,       0,       0,       0,       0,       0,
     /*32*/ 4,       0,       1,       0,       0,       0,       0,       0,
-    /*40*/ 0,       0,       0,       8 | 64,  0,       8 | 64,  64,      0,
+    /*40*/ 0,       0,       0,       8 | 64,  0,       8 | 32 | 64,  32 | 64, 32,
     /*48*/ 16 | 64, 16 | 64, 16 | 64, 16 | 64, 16 | 64, 16 | 64, 16 | 64, 16 | 64,
     /*56*/ 16 | 64, 16 | 64, 0,       0,       0,       0,       0,       0,
     /*64*/ 0,       2,       2,       2,       2,       2 | 64,  2,       2,
@@ -712,6 +712,9 @@ inline size_t findAsciiEndNEON(const char* JSON_STRUCT_RESTRICT data, size_t len
   const uint8x16_t char_underscore = vdupq_n_u8('_');
   const uint8x16_t char_caret = vdupq_n_u8('^');
   const uint8x16_t char_apostrophe = vdupq_n_u8('`');
+  const uint8x16_t char_slash = vdupq_n_u8('/');
+  const uint8x16_t char_dot = vdupq_n_u8('.');
+  const uint8x16_t char_hyphen = vdupq_n_u8('-');
 
   while (current + 16 <= end) {
     uint8x16_t chunk = vld1q_u8(reinterpret_cast<const uint8_t*>(current));
@@ -731,10 +734,13 @@ inline size_t findAsciiEndNEON(const char* JSON_STRUCT_RESTRICT data, size_t len
     uint8x16_t le_9 = vcleq_u8(chunk, char_9);
     uint8x16_t is_digit = vandq_u8(ge_0, le_9);
 
-    // Check special chars: _, ^, `
+    // Check special chars: _, ^, `, /, ., -
     uint8x16_t is_underscore = vceqq_u8(chunk, char_underscore);
     uint8x16_t is_caret = vceqq_u8(chunk, char_caret);
     uint8x16_t is_apostrophe = vceqq_u8(chunk, char_apostrophe);
+    uint8x16_t is_slash = vceqq_u8(chunk, char_slash);
+    uint8x16_t is_dot = vceqq_u8(chunk, char_dot);
+    uint8x16_t is_hyphen = vceqq_u8(chunk, char_hyphen);
 
     // Combine all valid characters
     uint8x16_t valid_chars = vorrq_u8(is_upper, is_lower);
@@ -742,6 +748,9 @@ inline size_t findAsciiEndNEON(const char* JSON_STRUCT_RESTRICT data, size_t len
     valid_chars = vorrq_u8(valid_chars, is_underscore);
     valid_chars = vorrq_u8(valid_chars, is_caret);
     valid_chars = vorrq_u8(valid_chars, is_apostrophe);
+    valid_chars = vorrq_u8(valid_chars, is_slash);
+    valid_chars = vorrq_u8(valid_chars, is_dot);
+    valid_chars = vorrq_u8(valid_chars, is_hyphen);
 
     // Find invalid characters
     uint8x16_t invalid_chars = vmvnq_u8(valid_chars);
@@ -771,7 +780,7 @@ inline size_t findAsciiEndNEON(const char* JSON_STRUCT_RESTRICT data, size_t len
   while (current < end) {
     char c = *current;
     if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-          (c >= '0' && c <= '9') || c == '_' || c == '^' || c == '`')) {
+          (c >= '0' && c <= '9') || c == '_' || c == '^' || c == '`' || c == '/' || c == '.' || c == '-')) {
       break;
     }
     current++;
@@ -839,6 +848,9 @@ inline size_t findAsciiEndSIMD(const char* JSON_STRUCT_RESTRICT data, size_t len
   const __m128i char_underscore = _mm_set1_epi8('_');
   const __m128i char_caret = _mm_set1_epi8('^');
   const __m128i char_apostrophe = _mm_set1_epi8('`');
+  const __m128i char_slash = _mm_set1_epi8('/');
+  const __m128i char_dot = _mm_set1_epi8('.');
+  const __m128i char_hyphen = _mm_set1_epi8('-');
 
   while (current + 16 <= end) {
     __m128i chunk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current));
@@ -858,10 +870,13 @@ inline size_t findAsciiEndSIMD(const char* JSON_STRUCT_RESTRICT data, size_t len
     __m128i le_9 = _mm_cmpeq_epi8(_mm_min_epu8(chunk, char_9), chunk);
     __m128i is_digit = _mm_and_si128(ge_0, le_9);
 
-    // Check special chars
+    // Check special chars: _, ^, `, /, ., -
     __m128i is_underscore = _mm_cmpeq_epi8(chunk, char_underscore);
     __m128i is_caret = _mm_cmpeq_epi8(chunk, char_caret);
     __m128i is_apostrophe = _mm_cmpeq_epi8(chunk, char_apostrophe);
+    __m128i is_slash = _mm_cmpeq_epi8(chunk, char_slash);
+    __m128i is_dot = _mm_cmpeq_epi8(chunk, char_dot);
+    __m128i is_hyphen = _mm_cmpeq_epi8(chunk, char_hyphen);
 
     // Combine all valid characters
     __m128i valid_chars = _mm_or_si128(is_upper, is_lower);
@@ -869,6 +884,9 @@ inline size_t findAsciiEndSIMD(const char* JSON_STRUCT_RESTRICT data, size_t len
     valid_chars = _mm_or_si128(valid_chars, is_underscore);
     valid_chars = _mm_or_si128(valid_chars, is_caret);
     valid_chars = _mm_or_si128(valid_chars, is_apostrophe);
+    valid_chars = _mm_or_si128(valid_chars, is_slash);
+    valid_chars = _mm_or_si128(valid_chars, is_dot);
+    valid_chars = _mm_or_si128(valid_chars, is_hyphen);
 
     int mask = _mm_movemask_epi8(valid_chars);
 
@@ -884,7 +902,7 @@ inline size_t findAsciiEndSIMD(const char* JSON_STRUCT_RESTRICT data, size_t len
   while (current < end) {
     char c = *current;
     if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-          (c >= '0' && c <= '9') || c == '_' || c == '^' || c == '`')) {
+          (c >= '0' && c <= '9') || c == '_' || c == '^' || c == '`' || c == '/' || c == '.' || c == '-')) {
       break;
     }
     current++;
@@ -1123,6 +1141,9 @@ inline size_t findAsciiEndAVX2(const char* JSON_STRUCT_RESTRICT data, size_t len
   const __m256i char_underscore = _mm256_set1_epi8('_');
   const __m256i char_caret = _mm256_set1_epi8('^');
   const __m256i char_apostrophe = _mm256_set1_epi8('`');
+  const __m256i char_slash = _mm256_set1_epi8('/');
+  const __m256i char_dot = _mm256_set1_epi8('.');
+  const __m256i char_hyphen = _mm256_set1_epi8('-');
 
   while (current + 32 <= end) {
     __m256i chunk = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(current));
@@ -1142,10 +1163,13 @@ inline size_t findAsciiEndAVX2(const char* JSON_STRUCT_RESTRICT data, size_t len
     __m256i le_9 = _mm256_cmpeq_epi8(_mm256_min_epu8(chunk, char_9), chunk);
     __m256i is_digit = _mm256_and_si256(ge_0, le_9);
 
-    // Check special chars
+    // Check special chars: _, ^, `, /, ., -
     __m256i is_underscore = _mm256_cmpeq_epi8(chunk, char_underscore);
     __m256i is_caret = _mm256_cmpeq_epi8(chunk, char_caret);
     __m256i is_apostrophe = _mm256_cmpeq_epi8(chunk, char_apostrophe);
+    __m256i is_slash = _mm256_cmpeq_epi8(chunk, char_slash);
+    __m256i is_dot = _mm256_cmpeq_epi8(chunk, char_dot);
+    __m256i is_hyphen = _mm256_cmpeq_epi8(chunk, char_hyphen);
 
     // Combine all valid characters
     __m256i valid_chars = _mm256_or_si256(is_upper, is_lower);
@@ -1153,6 +1177,9 @@ inline size_t findAsciiEndAVX2(const char* JSON_STRUCT_RESTRICT data, size_t len
     valid_chars = _mm256_or_si256(valid_chars, is_underscore);
     valid_chars = _mm256_or_si256(valid_chars, is_caret);
     valid_chars = _mm256_or_si256(valid_chars, is_apostrophe);
+    valid_chars = _mm256_or_si256(valid_chars, is_slash);
+    valid_chars = _mm256_or_si256(valid_chars, is_dot);
+    valid_chars = _mm256_or_si256(valid_chars, is_hyphen);
 
     int mask = _mm256_movemask_epi8(valid_chars);
 
@@ -1175,7 +1202,7 @@ inline size_t findAsciiEndAVX2(const char* JSON_STRUCT_RESTRICT data, size_t len
   while (current < end) {
     char c = *current;
     if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-          (c >= '0' && c <= '9') || c == '_' || c == '^' || c == '`')) {
+          (c >= '0' && c <= '9') || c == '_' || c == '^' || c == '`' || c == '/' || c == '.' || c == '-')) {
       break;
     }
     current++;
