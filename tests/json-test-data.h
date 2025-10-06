@@ -78,4 +78,13 @@ const char json_data2[] =
 "  \"LastStringNode\": \"More test data\"\n"
 "}\n";
 
+const char json_data3[] = R"json(
+{
+  an_array : [
+    text_element_one
+    text_two
+    text_three,
+  ]
+}
+)json";
 #endif //JSON_TEST_DATA_H

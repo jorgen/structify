@@ -28,7 +28,6 @@
 
 namespace json_tokenizer_test
 {
-
 TEST_CASE("check_json_with_string_and_ascii", "[tokenizer]")
 {
   JS::Error error;
@@ -182,4 +181,42 @@ TEST_CASE("check_json_with_string_and_ascii", "[tokenizer]")
   REQUIRE(error == JS::Error::NeedMoreData);
 }
 
-} // namespace json_tokenizer_test
+TEST_CASE("check_json_with_array_and_ascii", "[tokenizer]")
+{
+  JS::Error error;
+  JS::Tokenizer tokenizer;
+  tokenizer.allowAsciiType(true);
+  tokenizer.allowNewLineAsTokenDelimiter(true);
+  tokenizer.addData(json_data3, sizeof(json_data3));
+
+  JS::Token token;
+  error = tokenizer.nextToken(token);
+  REQUIRE(error == JS::Error::NoError);
+  REQUIRE(token.value_type == JS::Type::ObjectStart);
+
+  error = tokenizer.nextToken(token);
+  REQUIRE(error == JS::Error::NoError);
+  REQUIRE(std::string("an_array") == std::string(token.name.data, token.name.size));
+  REQUIRE(token.value_type == JS::Type::ArrayStart);
+
+  error = tokenizer.nextToken(token);
+  REQUIRE(error == JS::Error::NoError);
+  REQUIRE(std::string("text_element_one") == std::string(token.value.data, token.value.size));
+
+  error = tokenizer.nextToken(token);
+  REQUIRE(error == JS::Error::NoError);
+  REQUIRE(std::string("text_two") == std::string(token.value.data, token.value.size));
+
+  error = tokenizer.nextToken(token);
+  REQUIRE(error == JS::Error::NoError);
+  REQUIRE(std::string("text_three") == std::string(token.value.data, token.value.size));
+
+  error = tokenizer.nextToken(token);
+  REQUIRE(error == JS::Error::NoError);
+  REQUIRE(token.value_type == JS::Type::ArrayEnd);
+
+  error = tokenizer.nextToken(token);
+  REQUIRE(error == JS::Error::NoError);
+  REQUIRE(token.value_type == JS::Type::ObjectEnd);
+}
+}// namespace json_tokenizer_test

@@ -2161,21 +2161,21 @@ JSON_STRUCT_FORCE_INLINE Error Tokenizer::findDelimiter(const DataRef &json_data
   // Skip whitespace using SIMD if available
   size_t end = cursor_index;
 #ifdef JSON_STRUCT_HAS_AVX2
-  if (JSON_STRUCT_LIKELY(json_data.size - end >= 32)) {
+  if (JSON_STRUCT_LIKELY(json_data.size - end >= 32 && !allow_new_lines)) {
     size_t ws_skipped = Internal::skipWhitespaceAVX2(
       json_data.data + end,
       json_data.size - end);
     end += ws_skipped;
   }
 #elif defined(JSON_STRUCT_HAS_NEON)
-  if (JSON_STRUCT_LIKELY(json_data.size - end >= 16)) {
+  if (JSON_STRUCT_LIKELY(json_data.size - end >= 16 && !allow_new_lines)) {
     size_t ws_skipped = Internal::skipWhitespaceNEON(
       json_data.data + end,
       json_data.size - end);
     end += ws_skipped;
   }
 #elif defined(JSON_STRUCT_HAS_SSE2)
-  if (JSON_STRUCT_LIKELY(json_data.size - end >= 16)) {
+  if (JSON_STRUCT_LIKELY(json_data.size - end >= 16 && !allow_new_lines)) {
     size_t ws_skipped = Internal::skipWhitespaceSIMD(
       json_data.data + end,
       json_data.size - end);
@@ -2214,7 +2214,7 @@ JSON_STRUCT_FORCE_INLINE Error Tokenizer::findDelimiter(const DataRef &json_data
       *chars_ahead = end + 1 - cursor_index;
       return Error::NoError;
     }
-    else if (JSON_STRUCT_LIKELY(c == ','))
+    else if (JSON_STRUCT_LIKELY(c == ',') || JSON_STRUCT_UNLIKELY(allow_new_lines && c == '\n'))
     {
       if (JSON_STRUCT_UNLIKELY(container_type != Type::ArrayStart))
         return Error::ExpectedDelimiter;
@@ -2230,7 +2230,7 @@ JSON_STRUCT_FORCE_INLINE Error Tokenizer::findDelimiter(const DataRef &json_data
       *chars_ahead = end - cursor_index;
       return Error::NoError;
     }
-    else if (JSON_STRUCT_LIKELY(!(Internal::lookup()[(unsigned char)c] & Internal::WhiteSpaceOrNull)))
+    else if (JSON_STRUCT_UNLIKELY(!(Internal::lookup()[(unsigned char)c] & Internal::WhiteSpaceOrNull)))
     {
       return Error::ExpectedDelimiter;
     }
@@ -2246,21 +2246,21 @@ JSON_STRUCT_FORCE_INLINE Error Tokenizer::findTokenEnd(const DataRef &json_data,
   // Skip whitespace using SIMD if available
   size_t end = cursor_index;
 #ifdef JSON_STRUCT_HAS_AVX2
-  if (JSON_STRUCT_LIKELY(json_data.size - end >= 32)) {
+  if (JSON_STRUCT_LIKELY(json_data.size - end >= 32 && !allow_ascii_properties)) {
     size_t ws_skipped = Internal::skipWhitespaceAVX2(
       json_data.data + end,
       json_data.size - end);
     end += ws_skipped;
   }
 #elif defined(JSON_STRUCT_HAS_NEON)
-  if (JSON_STRUCT_LIKELY(json_data.size - end >= 16)) {
+  if (JSON_STRUCT_LIKELY(json_data.size - end >= 16 && !allow_ascii_properties)) {
     size_t ws_skipped = Internal::skipWhitespaceNEON(
       json_data.data + end,
       json_data.size - end);
     end += ws_skipped;
   }
 #elif defined(JSON_STRUCT_HAS_SSE2)
-  if (JSON_STRUCT_LIKELY(json_data.size - end >= 16)) {
+  if (JSON_STRUCT_LIKELY(json_data.size - end >= 16 && !allow_ascii_properties)) {
     size_t ws_skipped = Internal::skipWhitespaceSIMD(
       json_data.data + end,
       json_data.size - end);
@@ -2323,7 +2323,7 @@ JSON_STRUCT_FORCE_INLINE Error Tokenizer::findTokenEnd(const DataRef &json_data,
 inline Error Tokenizer::skipComment(const DataRef &json_data, size_t *chars_ahead)
 {
 #ifdef JSON_STRUCT_HAS_NEON
-  if (JSON_STRUCT_LIKELY(json_data.size - cursor_index >= 16)) {
+  if (JSON_STRUCT_LIKELY(json_data.size - cursor_index >= 16 && !allow_new_lines)) {
     size_t consumed = Internal::skipCommentNEON(
       json_data.data + cursor_index,
       json_data.size - cursor_index);
@@ -2335,7 +2335,7 @@ inline Error Tokenizer::skipComment(const DataRef &json_data, size_t *chars_ahea
     }
   }
 #elif defined(JSON_STRUCT_HAS_SSE2)
-  if (JSON_STRUCT_LIKELY(json_data.size - cursor_index >= 16)) {
+  if (JSON_STRUCT_LIKELY(json_data.size - cursor_index >= 16 && !allow_new_lines)) {
     size_t consumed = Internal::skipCommentSIMD(
       json_data.data + cursor_index,
       json_data.size - cursor_index);
@@ -2354,7 +2354,14 @@ inline Error Tokenizer::skipComment(const DataRef &json_data, size_t *chars_ahea
 
   if (found != end)
   {
-    *chars_ahead = (found - start) + 1;
+    if (allow_new_lines)
+    {
+      *chars_ahead = (found - start);
+    }
+    else
+    {
+      *chars_ahead = (found - start) + 1;
+    }
     return Error::NoError;
   }
   return Error::NeedMoreData;
