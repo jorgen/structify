@@ -152,6 +152,41 @@ since this is deduced by the parameter. Casting the whole object has the same se
     map.castToType(parseContext, sailboat);
 ```
 
+### Relaxed Parsing for Config Files
+
+json_struct supports relaxed JSON parsing rules, making it excellent for configuration files and human-editable data. When enabled, the parser allows:
+
+* **Comments** using `//` syntax
+* **Unquoted property names** and string values (ASCII mode)
+* **Newlines** instead of commas as delimiters
+* **Trailing commas** in objects and arrays
+
+Example configuration file:
+```js
+{
+  // Server configuration
+  host: localhost
+  port: 8080
+
+  database: {
+    name: myapp_db
+    max_connections: 100,  // Trailing comma is OK
+  }
+
+  log_file: /var/log/app.log
+}
+```
+
+Enable relaxed parsing with:
+```c++
+JS::ParseContext context(config_data);
+context.tokenizer.allowComments(true);
+context.tokenizer.allowAsciiType(true);
+context.tokenizer.allowNewLineAsTokenDelimiter(true);
+context.tokenizer.allowSuperfluousComma(true);
+context.parseTo(config_obj);
+```
+
 ### Demystifying the Macros
 The JS_OBJ macro adds a static meta object to the struct/class. It does not
 affect the semantics or size of the struct/class. It automatically applies
