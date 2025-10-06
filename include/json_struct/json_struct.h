@@ -215,18 +215,21 @@
 #define JSON_STRUCT_FORCE_INLINE __attribute__((always_inline)) inline
 #define JSON_STRUCT_COLD __attribute__((cold))
 #define JSON_STRUCT_HOT __attribute__((hot))
+#define JSON_STRUCT_RESTRICT __restrict__
 #elif defined(_MSC_VER)
 #define JSON_STRUCT_LIKELY(x) (x)
 #define JSON_STRUCT_UNLIKELY(x) (x)
 #define JSON_STRUCT_FORCE_INLINE __forceinline
 #define JSON_STRUCT_COLD
 #define JSON_STRUCT_HOT
+#define JSON_STRUCT_RESTRICT __restrict
 #else
 #define JSON_STRUCT_LIKELY(x) (x)
 #define JSON_STRUCT_UNLIKELY(x) (x)
 #define JSON_STRUCT_FORCE_INLINE inline
 #define JSON_STRUCT_COLD
 #define JSON_STRUCT_HOT
+#define JSON_STRUCT_RESTRICT
 #endif
 
 #if defined(__aarch64__) || defined(_M_ARM64)
@@ -433,7 +436,7 @@ static inline int bit_scan_forward(unsigned int mask)
 #endif
 }
 
-inline size_t findStringEndSIMD(const char* data, size_t length, bool& is_escaped)
+inline size_t findStringEndSIMD(const char* JSON_STRUCT_RESTRICT data, size_t length, bool& is_escaped)
 {
   const char* current = data;
   const char* end = data + length;
@@ -476,7 +479,7 @@ inline size_t findStringEndSIMD(const char* data, size_t length, bool& is_escape
   return current - data;
 }
 
-inline size_t findNumberEndSIMD(const char* data, size_t length)
+inline size_t findNumberEndSIMD(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -513,7 +516,7 @@ inline size_t findNumberEndSIMD(const char* data, size_t length)
 #endif
 
 #ifdef JSON_STRUCT_HAS_NEON
-inline size_t findStringEndNEON(const char* data, size_t length, bool& is_escaped)
+inline size_t findStringEndNEON(const char* JSON_STRUCT_RESTRICT data, size_t length, bool& is_escaped)
 {
   const char* current = data;
   const char* end = data + length;
@@ -570,7 +573,7 @@ byte_by_byte:
   return current - data;
 }
 
-inline size_t findNumberEndNEON(const char* data, size_t length)
+inline size_t findNumberEndNEON(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -638,7 +641,7 @@ inline size_t findNumberEndNEON(const char* data, size_t length)
   return current - data;
 }
 
-inline size_t skipWhitespaceNEON(const char* data, size_t length)
+inline size_t skipWhitespaceNEON(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -695,7 +698,7 @@ inline size_t skipWhitespaceNEON(const char* data, size_t length)
   return current - data;
 }
 
-inline size_t findAsciiEndNEON(const char* data, size_t length)
+inline size_t findAsciiEndNEON(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -777,7 +780,7 @@ inline size_t findAsciiEndNEON(const char* data, size_t length)
   return current - data;
 }
 
-inline size_t skipCommentNEON(const char* data, size_t length)
+inline size_t skipCommentNEON(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -822,7 +825,7 @@ inline size_t skipCommentNEON(const char* data, size_t length)
 
 #ifdef JSON_STRUCT_HAS_SSE2
 
-inline size_t findAsciiEndSIMD(const char* data, size_t length)
+inline size_t findAsciiEndSIMD(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -890,7 +893,7 @@ inline size_t findAsciiEndSIMD(const char* data, size_t length)
   return current - data;
 }
 
-inline size_t skipCommentSIMD(const char* data, size_t length)
+inline size_t skipCommentSIMD(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -919,7 +922,7 @@ inline size_t skipCommentSIMD(const char* data, size_t length)
   return current - data;
 }
 
-inline size_t skipWhitespaceSIMD(const char* data, size_t length)
+inline size_t skipWhitespaceSIMD(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -966,7 +969,7 @@ inline size_t skipWhitespaceSIMD(const char* data, size_t length)
 
 #ifdef JSON_STRUCT_HAS_AVX2
 
-inline size_t skipWhitespaceAVX2(const char* data, size_t length)
+inline size_t skipWhitespaceAVX2(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -1019,7 +1022,7 @@ inline size_t skipWhitespaceAVX2(const char* data, size_t length)
   return current - data;
 }
 
-inline size_t skipCommentAVX2(const char* data, size_t length)
+inline size_t skipCommentAVX2(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -1055,7 +1058,7 @@ inline size_t skipCommentAVX2(const char* data, size_t length)
   return current - data;
 }
 
-inline size_t findStringEndAVX2(const char* data, size_t length, bool& is_escaped)
+inline size_t findStringEndAVX2(const char* JSON_STRUCT_RESTRICT data, size_t length, bool& is_escaped)
 {
   const char* current = data;
   const char* end = data + length;
@@ -1106,7 +1109,7 @@ inline size_t findStringEndAVX2(const char* data, size_t length, bool& is_escape
   return current - data;
 }
 
-inline size_t findAsciiEndAVX2(const char* data, size_t length)
+inline size_t findAsciiEndAVX2(const char* JSON_STRUCT_RESTRICT data, size_t length)
 {
   const char* current = data;
   const char* end = data + length;
@@ -1330,7 +1333,7 @@ private:
   void requestMoreData();
   void releaseFirstDataRef();
   Error populateFromDataRef(DataRef &data, Type &type, const DataRef &json_data);
-  static void populate_annonymous_token(const DataRef &data, Type type, Token &token);
+  static void populate_anonymous_token(const DataRef &data, Type type, Token &token);
   Error populateNextTokenFromDataRef(Token &next_token, const DataRef &json_data);
 
   InTokenState token_state = InTokenState::FindingName;
@@ -1341,7 +1344,7 @@ private:
   bool allow_new_lines : 1;
   bool allow_superfluous_comma : 1;
   bool allow_comments : 1;
-  bool expecting_prop_or_annonymous_data : 1;
+  bool expecting_prop_or_anonymous_data : 1;
   bool continue_after_need_more_data : 1;
   size_t cursor_index;
   size_t current_data_start;
@@ -1499,7 +1502,7 @@ inline Tokenizer::Tokenizer()
   , allow_new_lines(false)
   , allow_superfluous_comma(false)
   , allow_comments(false)
-  , expecting_prop_or_annonymous_data(false)
+  , expecting_prop_or_anonymous_data(false)
   , continue_after_need_more_data(false)
   , cursor_index(0)
   , current_data_start(0)
@@ -1617,31 +1620,31 @@ inline Error Tokenizer::nextToken(Token &next_token)
       scope_counter.back().handleType(next_token.value_type);
     return Error::NoError;
   }
-  if (data_list.empty())
+  if (JSON_STRUCT_UNLIKELY(data_list.empty()))
   {
     requestMoreData();
   }
 
   error_context.clear();
 
-  if (data_list.empty())
+  if (JSON_STRUCT_UNLIKELY(data_list.empty()))
   {
     return Error::NeedMoreData;
   }
 
-  if (!continue_after_need_more_data)
+  if (JSON_STRUCT_LIKELY(!continue_after_need_more_data))
     resetForNewToken();
 
   Error error = Error::NeedMoreData;
-  while (error == Error::NeedMoreData && data_list.size())
+  while (JSON_STRUCT_LIKELY(error == Error::NeedMoreData && data_list.size()))
   {
     const DataRef &json_data = data_list.front();
     error = populateNextTokenFromDataRef(next_token, json_data);
 
-    if (error != Error::NoError && error != Error::NeedMoreData)
+    if (JSON_STRUCT_UNLIKELY(error != Error::NoError && error != Error::NeedMoreData))
       updateErrorContext(error);
 
-    if (error == Error::NeedMoreData)
+    if (JSON_STRUCT_UNLIKELY(error == Error::NeedMoreData))
     {
       releaseFirstDataRef();
       requestMoreData();
@@ -1649,13 +1652,13 @@ inline Error Tokenizer::nextToken(Token &next_token)
   }
 
   continue_after_need_more_data = error == Error::NeedMoreData;
-  if (error == JS::Error::NoError)
+  if (JSON_STRUCT_LIKELY(error == JS::Error::NoError))
   {
     if (next_token.value_type == Type::ArrayStart || next_token.value_type == Type::ObjectStart)
       container_stack.push_back(next_token.value_type);
-    if (next_token.value_type == Type::ArrayEnd)
+    if (JSON_STRUCT_UNLIKELY(next_token.value_type == Type::ArrayEnd))
     {
-      if (!container_stack.size() || container_stack.back() != JS::Type::ArrayStart)
+      if (JSON_STRUCT_UNLIKELY(!container_stack.size() || container_stack.back() != JS::Type::ArrayStart))
       {
         error = Error::UnexpectedArrayEnd;
         updateErrorContext(error);
@@ -1663,9 +1666,9 @@ inline Error Tokenizer::nextToken(Token &next_token)
       }
       container_stack.pop_back();
     }
-    if (next_token.value_type == Type::ObjectEnd)
+    if (JSON_STRUCT_UNLIKELY(next_token.value_type == Type::ObjectEnd))
     {
-      if (!container_stack.size() || container_stack.back() != JS::Type::ObjectStart)
+      if (JSON_STRUCT_UNLIKELY(!container_stack.size() || container_stack.back() != JS::Type::ObjectStart))
       {
         error = Error::UnexpectedObjectEnd;
         updateErrorContext(error);
@@ -1673,7 +1676,7 @@ inline Error Tokenizer::nextToken(Token &next_token)
       }
       container_stack.pop_back();
     }
-    if (scope_counter.size())
+    if (JSON_STRUCT_LIKELY(scope_counter.size()))
       scope_counter.back().handleType(next_token.value_type);
   }
   return error;
@@ -2043,6 +2046,44 @@ JSON_STRUCT_FORCE_INLINE Error Tokenizer::findStartOfNextValue(Type *type, const
   }
 #endif
 
+  // Fast path: check first character after whitespace for single-char tokens
+  if (JSON_STRUCT_LIKELY(current_pos < json_data.size))
+  {
+    const char c = json_data.data[current_pos];
+
+    // Most common single-character tokens - optimized with direct comparison
+    if (JSON_STRUCT_LIKELY(c == '"'))
+    {
+      *type = Type::String;
+      *chars_ahead = current_pos - cursor_index;
+      return Error::NoError;
+    }
+    else if (JSON_STRUCT_LIKELY(c == '{'))
+    {
+      *type = Type::ObjectStart;
+      *chars_ahead = current_pos - cursor_index;
+      return Error::NoError;
+    }
+    else if (JSON_STRUCT_LIKELY(c == '}'))
+    {
+      *type = Type::ObjectEnd;
+      *chars_ahead = current_pos - cursor_index;
+      return Error::NoError;
+    }
+    else if (JSON_STRUCT_LIKELY(c == '['))
+    {
+      *type = Type::ArrayStart;
+      *chars_ahead = current_pos - cursor_index;
+      return Error::NoError;
+    }
+    else if (JSON_STRUCT_LIKELY(c == ']'))
+    {
+      *type = Type::ArrayEnd;
+      *chars_ahead = current_pos - cursor_index;
+      return Error::NoError;
+    }
+  }
+
   for (; current_pos < json_data.size; current_pos++)
   {
     const char c = json_data.data[current_pos];
@@ -2142,6 +2183,9 @@ JSON_STRUCT_FORCE_INLINE Error Tokenizer::findDelimiter(const DataRef &json_data
   }
 #endif
 
+  // Prefetch ahead for better cache utilization
+  JSON_STRUCT_PREFETCH(json_data.data + end + 64);
+
   for (; end < json_data.size; end++)
   {
     const char c = json_data.data[end];
@@ -2224,6 +2268,9 @@ JSON_STRUCT_FORCE_INLINE Error Tokenizer::findTokenEnd(const DataRef &json_data,
   }
 #endif
 
+  // Prefetch ahead for better cache utilization
+  JSON_STRUCT_PREFETCH(json_data.data + end + 64);
+
   for (; end < json_data.size; end++)
   {
     const char c = json_data.data[end];
@@ -2243,16 +2290,16 @@ JSON_STRUCT_FORCE_INLINE Error Tokenizer::findTokenEnd(const DataRef &json_data,
 
     if (JSON_STRUCT_LIKELY(c == ','))
     {
-      expecting_prop_or_annonymous_data = true;
+      expecting_prop_or_anonymous_data = true;
       *chars_ahead = end + 1 - cursor_index;
       return Error::NoError;
     }
-    else if (JSON_STRUCT_LIKELY(c == ']' || c == '}'))
+    if (JSON_STRUCT_LIKELY(c == ']' || c == '}'))
     {
       *chars_ahead = end - cursor_index;
       return Error::NoError;
     }
-    else if (JSON_STRUCT_UNLIKELY(c == '\n'))
+    if (JSON_STRUCT_UNLIKELY(c == '\n'))
     {
       if (allow_new_lines)
       {
@@ -2380,21 +2427,24 @@ inline Error Tokenizer::populateFromDataRef(DataRef &data, Type &type, const Dat
   }
 
   size_t negative_size_adjustment = 0;
-  if (property_state == InPropertyState::FindingEnd)
+  if (JSON_STRUCT_LIKELY(property_state == InPropertyState::FindingEnd))
   {
-    switch (type)
+    // Use jump table optimization with likely paths
+    if (JSON_STRUCT_LIKELY(type == Type::String))
     {
-    case Type::String:
       error = findStringEnd(json_data, &diff);
       negative_size_adjustment = 1;
-      break;
-    case Type::Ascii:
-      error = findAsciiEnd(json_data, &diff);
-      break;
-    case Type::Number:
+    }
+    else if (JSON_STRUCT_LIKELY(type == Type::Number))
+    {
       error = findNumberEnd(json_data, &diff);
-      break;
-    default:
+    }
+    else if (JSON_STRUCT_LIKELY(type == Type::Ascii))
+    {
+      error = findAsciiEnd(json_data, &diff);
+    }
+    else
+    {
       return Error::InvalidToken;
     }
 
@@ -2411,7 +2461,7 @@ inline Error Tokenizer::populateFromDataRef(DataRef &data, Type &type, const Dat
   return Error::NoError;
 }
 
-inline void Tokenizer::populate_annonymous_token(const DataRef &data, Type type, Token &token)
+inline void Tokenizer::populate_anonymous_token(const DataRef &data, Type type, Token &token)
 {
   token.name = DataRef();
   token.name_type = Type::Ascii;
@@ -2514,18 +2564,18 @@ inline Error Tokenizer::populateNextTokenFromDataRef(Token &next_token, const Da
         {
         case Type::ObjectEnd:
         case Type::ArrayEnd:
-          if (expecting_prop_or_annonymous_data && !allow_superfluous_comma)
+          if (expecting_prop_or_anonymous_data && !allow_superfluous_comma)
           {
             return Error::ExpectedDataToken;
           }
-          populate_annonymous_token(data, type, next_token);
+          populate_anonymous_token(data, type, next_token);
           token_state = InTokenState::FindingTokenEnd;
           return Error::NoError;
 
         case Type::ObjectStart:
         case Type::ArrayStart:
-          populate_annonymous_token(data, type, next_token);
-          expecting_prop_or_annonymous_data = false;
+          populate_anonymous_token(data, type, next_token);
+          expecting_prop_or_anonymous_data = false;
           token_state = InTokenState::FindingName;
           return Error::NoError;
         default:
@@ -2556,10 +2606,10 @@ inline Error Tokenizer::populateNextTokenFromDataRef(Token &next_token, const Da
       }
       cursor_index += diff;
       resetForNewValue();
-      expecting_prop_or_annonymous_data = false;
+      expecting_prop_or_anonymous_data = false;
       if (token_state == InTokenState::FindingName)
       {
-        populate_annonymous_token(tmp_token.name, tmp_token.name_type, next_token);
+        populate_anonymous_token(tmp_token.name, tmp_token.name_type, next_token);
         return Error::NoError;
       }
       else
