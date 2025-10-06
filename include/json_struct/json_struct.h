@@ -184,6 +184,7 @@
 
 #define JS_UNUSED(x) (void)(x)
 
+#ifndef JS_DISABLE_SIMD
 #if defined(__SSE2__) || defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
 #define JSON_STRUCT_HAS_SSE2 1
 #include <emmintrin.h>
@@ -208,6 +209,8 @@
 #define JSON_STRUCT_HAS_NEON 1
 #include <arm_neon.h>
 #endif
+#endif
+
 
 #if defined(__GNUC__) || defined(__clang__)
 #define JSON_STRUCT_LIKELY(x) __builtin_expect(!!(x), 1)
