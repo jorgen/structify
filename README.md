@@ -3,20 +3,15 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/mduab0w8u12atfbu?svg=true)](https://ci.appveyor.com/project/jorgen36373/json-struct)
 [![ClusterFuzzLite PR fuzzing](https://github.com/jorgen/json_struct/actions/workflows/cflite_pr.yml/badge.svg)](https://github.com/jorgen/json_struct/actions/workflows/cflite_pr.yml)
 
-json_struct is a single header only library that parses JSON to C++ structs/classes
-and serializing structs/classes to JSON.
+json_struct is a single-header C++ library that parses JSON to structs/classes and serializes structs/classes back to JSON. With support for relaxed parsing rules, it's also excellent for configuration files and human-editable data formats.
 
-It is intended to be used by copying the json_struct.h file from the include
-folder into the include path for the project. It is only the json_struct.h file
-that is needed to serialize and deserialize json from structures.
+**Getting Started:** Simply copy `json_struct.h` from the `include` folder into your project's include path.
 
-It is dependent on some C++11 features and is tested on newer versions of gcc
-and clang. It is also tested on VS 2015 and newer.
+**Requirements:** C++11 or newer. Tested on GCC, Clang, and Visual Studio 2015+.
 
-### Structs
+## Quick Start
 
-json_struct can parse JSON and automatically populate structures with content
-by adding some metadata to the C++ structs.
+json_struct automatically maps JSON to C++ structs by adding simple metadata declarations.
 
 ```json
 {
@@ -51,7 +46,7 @@ struct JsonObject
 JS_OBJ_EXT(JsonObject, One, Two, Three);
 ```
 
-Populating the struct would look like this:
+**Parse JSON to struct:**
 
 ```c++
 JS::ParseContext context(json_data);
@@ -59,7 +54,7 @@ JsonObject obj;
 context.parseTo(obj);
 ```
 
-Serializing the struct to json could be done like this:
+**Serialize struct to JSON:**
 
 ```c++
 std::string pretty_json = JS::serializeStruct(obj);
@@ -67,10 +62,44 @@ std::string pretty_json = JS::serializeStruct(obj);
 std::string compact_json = JS::serializeStruct(obj, JS::SerializerOptions(JS::SerializerOptions::Compact));
 ```
 
-### Maps
+## Relaxed Parsing for Config Files
 
-Sometimes the structure of the JSON is dependent on some value in the JSON. Say there is some input JSON that describes a transportation vehicle.
-It can looks something like this
+json_struct supports relaxed JSON parsing rules, making it ideal for configuration files and human-editable data. Enable optional features for a more forgiving syntax:
+
+* **Comments** using `//` syntax
+* **Unquoted property names** and string values (supports `A-Z`, `a-z`, `0-9`, `_`, `-`, `.`, `/`)
+* **Newlines** instead of commas as delimiters
+* **Trailing commas** in objects and arrays
+
+**Example configuration file:**
+```js
+{
+  // Server configuration
+  host: localhost
+  port: 8080
+
+  database: {
+    name: myapp_db
+    max_connections: 100,  // Trailing comma is OK
+  }
+
+  log_file: /var/log/app.log
+}
+```
+
+**Enable relaxed parsing:**
+```c++
+JS::ParseContext context(config_data);
+context.tokenizer.allowComments(true);
+context.tokenizer.allowAsciiType(true);
+context.tokenizer.allowNewLineAsTokenDelimiter(true);
+context.tokenizer.allowSuperfluousComma(true);
+context.parseTo(config_obj);
+```
+
+## Dynamic JSON with Maps
+
+When the JSON structure depends on runtime values, you can parse into a `JS::Map` first, inspect the data, then dispatch to the appropriate type. For example, consider JSON describing different vehicle types:
 ```json
 {
   "type" : "car",
@@ -89,9 +118,7 @@ or it could look like this:
 }
 ```
 
-This doesn't fit well with the static nature of json_struct. However, it is
-possible to parse the JSON into a map structure, query some child members for
-data and then dispatch the conversion into an appropriate type.
+Parse into a map, query for the type field, then convert to the specific struct:
 
 ```c++
 void handle_data(const char *data, size_t size)
@@ -134,17 +161,7 @@ void handle_data(const char *data, size_t size)
 }
 ```
 
-Here we parse the JSON into a `JS::Map`. This map lets us query if the map
-contains a member and it enables us to convert that member into a type. In the example we convert it to the VehicleType:
-```c++
-  VehicleType vehicleType = map.castTo<VehicleType>("type", parseContext);
-```
-Then we can inspect the value of the type child and cast the entire object into
-the desired type. The `cast` functions have two signatures: `castTo` and
-`castToValue`. `castTo` returnes the value type, however, if the object has
-already been allocated and just needs to populated then `castToType`.
-`castToType` has the added bonus of not needing to specify the template type
-since this is deduced by the parameter. Casting the whole object has the same semantics it only misses the "name" parameter:
+The `JS::Map` allows querying and extracting individual fields before converting the entire object. Two casting styles are available:
 ```c++
     Car car = map.castTo<Car>(parseContext);
     // or
@@ -152,49 +169,9 @@ since this is deduced by the parameter. Casting the whole object has the same se
     map.castToType(parseContext, sailboat);
 ```
 
-### Relaxed Parsing for Config Files
+## Advanced Macro Usage
 
-json_struct supports relaxed JSON parsing rules, making it excellent for configuration files and human-editable data. When enabled, the parser allows:
-
-* **Comments** using `//` syntax
-* **Unquoted property names** and string values (ASCII mode)
-* **Newlines** instead of commas as delimiters
-* **Trailing commas** in objects and arrays
-
-Example configuration file:
-```js
-{
-  // Server configuration
-  host: localhost
-  port: 8080
-
-  database: {
-    name: myapp_db
-    max_connections: 100,  // Trailing comma is OK
-  }
-
-  log_file: /var/log/app.log
-}
-```
-
-Enable relaxed parsing with:
-```c++
-JS::ParseContext context(config_data);
-context.tokenizer.allowComments(true);
-context.tokenizer.allowAsciiType(true);
-context.tokenizer.allowNewLineAsTokenDelimiter(true);
-context.tokenizer.allowSuperfluousComma(true);
-context.parseTo(config_obj);
-```
-
-### Demystifying the Macros
-The JS_OBJ macro adds a static meta object to the struct/class. It does not
-affect the semantics or size of the struct/class. It automatically applies
-another macro to the member arguments, getting the name and member pointer.
-There are other macros that are more verbose, but that gives more flexibility.
-
-The JS_OBJECT macro requires that all the members are passed in a JS_MEMBER
-macro. An example of these macros being applied would look like this:
+The `JS_OBJ` macro adds a static metadata object to your struct without affecting its size or semantics. For more control, use the verbose `JS_OBJECT` macro with explicit member declarations:
 ```c++
 struct JsonObject
 {
@@ -208,9 +185,7 @@ struct JsonObject
 };
 ```
 
-This doesn't add any value, but say you want to have a different JSON key for a
-member than the name, or maybe you want to add some alias keys, then this
-could be done like this:
+**Custom JSON keys and aliases:**
 ```c++
 struct JsonObject
 {
@@ -224,22 +199,14 @@ struct JsonObject
 };
 ```
 
-The difference between the _WITH_NAME and _ALIASES macros is that the
-_WITH_NAME macro ignores the member name and uses the supplied name, while the
-aliases adds a list of names to be checked after the name of the member is
-checked.
+* `JS_MEMBER_WITH_NAME` - Uses only the supplied name, ignoring the member name
+* `JS_MEMBER_ALIASES` - Checks aliases after the primary member name
 
-Its not possible to use the JS_MEMBER macros with the JS_OBJ macro, since then
-it tries to apply the JS_MEMBER macro twice on member.
+**Note:** Don't mix `JS_MEMBER` macros with `JS_OBJ` as it will double-apply the macro.
 
-### TypeHandler
-For objects the meta information is generated with JS_OBJ and JS_OBJECT macros,
-but there might be types that doesn't fit the meta information interface, ie
-they are not JSON Object types. Then its possible to define how these specific
-classes are serialized and deserialized with the TypeHandler interface.
+## Custom Type Handlers
 
-When the JS::ParseContext tries to parse a type it will look for a template
-specialisation of the type:
+For types that don't fit the standard object model (e.g., custom serialization logic), implement a `TypeHandler` specialization. The `JS::ParseContext` looks for template specializations:
 
 ```c++
 namespace JS {
@@ -248,7 +215,7 @@ namespace JS {
 }
 ```
 
-There are a number of predefined template specialisations for types such as:
+**Built-in type handlers:**
 
 * `std::string`
 * `double`
@@ -265,8 +232,7 @@ There are a number of predefined template specialisations for types such as:
 * `std::vector`
 * `[T]`
 
-Its not often necessary, but when you need to define your own serialization and
-deserialization it's done like this:
+**Custom type handler example:**
 
 ```c++
 namespace JS {
@@ -296,20 +262,19 @@ public:
 }
 ```
 
-This gives you complete control of serialization deserialization of a type and it can unfold to a JSON object or array if needed.
+This gives complete control over serialization/deserialization and can represent any JSON structure (objects, arrays, primitives).
 
-For more information checkout the examples at:
-https://github.com/jorgen/json_struct/tree/master/examples
+## Examples and Tests
 
-and have a look at the more complete unit tests at:
-https://github.com/jorgen/json_struct/tree/master/tests
+* [Examples](https://github.com/jorgen/json_struct/tree/master/examples) - See practical usage patterns
+* [Unit Tests](https://github.com/jorgen/json_struct/tree/master/tests) - Comprehensive test coverage
 
+## Quality Assurance
 
-## SAST Tools
+**Static Analysis:**
+* [PVS-Studio](https://pvs-studio.com/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source) - C, C++, C#, and Java static analyzer
 
-- [PVS-Studio](https://pvs-studio.com/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source) - static analyzer for C, C++, C#, and Java code.
-
-## DAST Tools
-All tests are run with Clang Address Sanitizer and Memory Sanitizers on pull requests.
-- [Clang Address Sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
-- [Clang Memory Sanitizer](https://clang.llvm.org/docs/MemorySanitizer.html)
+**Dynamic Analysis:**
+All pull requests are tested with:
+* [Clang Address Sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
+* [Clang Memory Sanitizer](https://clang.llvm.org/docs/MemorySanitizer.html)
