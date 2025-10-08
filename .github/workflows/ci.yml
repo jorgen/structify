@@ -22,7 +22,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ninja-build
 
       - name: Configure CMake
-        run: cmake -H. -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+        run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
       - name: Build
         run: ninja -C build
@@ -59,7 +59,7 @@ jobs:
         run: choco install ninja
 
       - name: Configure CMake
-        run: cmake -H. -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+        run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
       - name: Build
         run: ninja -C build
@@ -83,20 +83,20 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x86
-          toolset: 14.1X
+          toolset: 14.15
 
       - name: Setup MSVC (x64)
         if: matrix.platform == 'x64'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-          toolset: 14.1X
+          toolset: 14.15
 
       - name: Install Ninja
         run: choco install ninja
 
       - name: Configure CMake
-        run: cmake -H. -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+        run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
       - name: Build
         run: ninja -C build
@@ -120,20 +120,20 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x86
-          toolset: 14.2X
+          toolset: 14.29
 
       - name: Setup MSVC (x64)
         if: matrix.platform == 'x64'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-          toolset: 14.2X
+          toolset: 14.29
 
       - name: Install Ninja
         run: choco install ninja
 
       - name: Configure CMake
-        run: cmake -H. -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+        run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
       - name: Build
         run: ninja -C build
@@ -157,20 +157,20 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x86
-          toolset: 14.3X
+          toolset: 14.44
 
       - name: Setup MSVC (x64)
         if: matrix.platform == 'x64'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-          toolset: 14.3X
+          toolset: 14.44
 
       - name: Install Ninja
         run: choco install ninja
 
       - name: Configure CMake
-        run: cmake -H. -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+        run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
       - name: Build
         run: ninja -C build
