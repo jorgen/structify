@@ -1,0 +1,140 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        platform: [x64]
+        config: [Debug]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Configure CMake
+        run: cmake -H. -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Test
+        run: ctest --test-dir build
+
+  build-windows-2015:
+    runs-on: windows-2016
+    strategy:
+      matrix:
+        platform: [x86, x64]
+        config: [Debug]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup MSVC (x86)
+        if: matrix.platform == 'x86'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+          toolset: 14.0
+
+      - name: Setup MSVC (x64)
+        if: matrix.platform == 'x64'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+          toolset: 14.0
+
+      - name: Install Ninja
+        run: choco install ninja
+
+      - name: Configure CMake
+        run: cmake -H. -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Test
+        run: ctest --test-dir build
+
+  build-windows-2017:
+    runs-on: windows-2019
+    strategy:
+      matrix:
+        platform: [x86, x64]
+        config: [Debug]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup MSVC (x86)
+        if: matrix.platform == 'x86'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+          toolset: 14.1
+
+      - name: Setup MSVC (x64)
+        if: matrix.platform == 'x64'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+          toolset: 14.1
+
+      - name: Install Ninja
+        run: choco install ninja
+
+      - name: Configure CMake
+        run: cmake -H. -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Test
+        run: ctest --test-dir build
+
+  build-windows-2019:
+    runs-on: windows-2019
+    strategy:
+      matrix:
+        platform: [x86, x64]
+        config: [Debug]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup MSVC (x86)
+        if: matrix.platform == 'x86'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+
+      - name: Setup MSVC (x64)
+        if: matrix.platform == 'x64'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Ninja
+        run: choco install ninja
+
+      - name: Configure CMake
+        run: cmake -H. -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Test
+        run: ctest --test-dir build

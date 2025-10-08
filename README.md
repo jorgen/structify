@@ -1,6 +1,6 @@
 # **Structurize your JSON**
 
-[![Build status](https://ci.appveyor.com/api/projects/status/mduab0w8u12atfbu?svg=true)](https://ci.appveyor.com/project/jorgen36373/json-struct)
+[![CI](https://github.com/jorgen/json_struct/actions/workflows/ci.yml/badge.svg)](https://github.com/jorgen/json_struct/actions/workflows/ci.yml)
 [![ClusterFuzzLite PR fuzzing](https://github.com/jorgen/json_struct/actions/workflows/cflite_pr.yml/badge.svg)](https://github.com/jorgen/json_struct/actions/workflows/cflite_pr.yml)
 
 json_struct is a single-header C++ library that parses JSON to structs/classes and serializes structs/classes back to JSON. With support for relaxed parsing rules, it's also excellent for configuration files and human-editable data formats.
