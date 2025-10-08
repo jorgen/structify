@@ -1,5 +1,5 @@
 ### Project
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.25)
 project(json_struct VERSION "1.0.3" HOMEPAGE_URL "https://github.com/jorgen/json_struct" DESCRIPTION "A library for parsing JSON directly to C++ structs and vice versa." LANGUAGES CXX)
 set(CPACK_PACKAGE_VENDOR "Jørgen Lind")
 
@@ -64,6 +64,7 @@ catch2
 GIT_REPOSITORY https://github.com/catchorg/Catch2.git
 GIT_TAG v3.11.0
 GIT_SHALLOW TRUE
+SYSTEM
 )
 
 FetchContent_MakeAvailable(catch2)
