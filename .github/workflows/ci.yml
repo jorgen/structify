@@ -83,14 +83,14 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x86
-          toolset: 14.1
+          toolset: 14.1X
 
       - name: Setup MSVC (x64)
         if: matrix.platform == 'x64'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-          toolset: 14.1
+          toolset: 14.1X
 
       - name: Install Ninja
         run: choco install ninja
@@ -120,14 +120,14 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x86
-          toolset: 14.2
+          toolset: 14.2X
 
       - name: Setup MSVC (x64)
         if: matrix.platform == 'x64'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-          toolset: 14.2
+          toolset: 14.2X
 
       - name: Install Ninja
         run: choco install ninja
@@ -157,14 +157,14 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x86
-          toolset: 14.3
+          toolset: 14.3X
 
       - name: Setup MSVC (x64)
         if: matrix.platform == 'x64'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-          toolset: 14.3
+          toolset: 14.3X
 
       - name: Install Ninja
         run: choco install ninja
