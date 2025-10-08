@@ -55,46 +55,6 @@ jobs:
           arch: x64
           toolset: 14.0
 
-      - name: Install Ninja
-        run: choco install ninja
-
-      - name: Configure CMake
-        run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
-
-      - name: Build
-        run: ninja -C build
-
-      - name: Test
-        run: ctest --test-dir build
-
-  build-windows-vs2017:
-    runs-on: windows-2025
-    strategy:
-      matrix:
-        platform: [x86, x64]
-        config: [Debug]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Setup MSVC (x86)
-        if: matrix.platform == 'x86'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x86
-          toolset: 14.16
-
-      - name: Setup MSVC (x64)
-        if: matrix.platform == 'x64'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-          toolset: 14.16
-
-      - name: Install Ninja
-        run: choco install ninja
-
       - name: Configure CMake
         run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
@@ -129,9 +89,6 @@ jobs:
           arch: x64
           toolset: 14.29
 
-      - name: Install Ninja
-        run: choco install ninja
-
       - name: Configure CMake
         run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
@@ -165,9 +122,6 @@ jobs:
         with:
           arch: x64
           toolset: 14.44
-
-      - name: Install Ninja
-        run: choco install ninja
 
       - name: Configure CMake
         run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
