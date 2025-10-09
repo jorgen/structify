@@ -1,11 +1,11 @@
 FROM ubuntu:24.04
-ARG llvmver=19
+ARG llvmver=21
 
 RUN apt update && \
   apt-get install -y software-properties-common gnupg apt-transport-https ca-certificates 
 
-ADD docker/ubuntu24.04/llvm.list /etc/apt/sources.list.d/
-ADD docker/ubuntu24.04/llvm-snapshot.gpg.key.gpg /etc/apt/trusted.gpg.d/
+RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add - && \
+  sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble main"
 
 RUN apt update && \
   apt-get install -y ca-certificates build-essential clang-$llvmver libc++-$llvmver-dev libc++abi-$llvmver-dev libunwind-$llvmver-dev && \
