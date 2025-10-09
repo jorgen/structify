@@ -1,7 +1,7 @@
 FROM archlinux:latest
 
 RUN pacman -Syu --noconfirm && \
-  pacman -S --noconfirm base-devel clang libc++ cmake ninja git vim
+  pacman -S --noconfirm base-devel clang libc++ cmake ninja git vim python3
 
 ENV CXX=clang++
 ENV CC=clang
