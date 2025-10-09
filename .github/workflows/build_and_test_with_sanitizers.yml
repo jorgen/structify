@@ -14,7 +14,7 @@ jobs:
         uses: ./.github/actions/docker-build-action
         with:
           imageName: json_struct_sanitizer_docker:3
-          dockerFile: docker/ubuntu24.04/Dockerfile
+          dockerFile: docker/archlinux/Dockerfile
           user: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
