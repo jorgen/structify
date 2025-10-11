@@ -1,15 +1,22 @@
 FROM archlinux:latest
 
 RUN pacman -Syu --noconfirm && \
-  pacman -S --noconfirm base-devel clang libc++ cmake ninja git vim python3
+  pacman -S --noconfirm base-devel llvm clang libc++ cmake ninja git vim python3
 
 ENV CXX=clang++
 ENV CC=clang
 
-RUN git clone --depth=1 https://github.com/llvm/llvm-project && \
+RUN CLANG_VERSION=$(clang --version | head -n1 | sed 's/.*version \([0-9.]*\).*/\1/') && \
+    git clone --depth=1 --branch llvmorg-${CLANG_VERSION} https://github.com/llvm/llvm-project && \
     cd llvm-project && \
     mkdir build; \
-    cmake -G Ninja -S runtimes -B build -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi" -DLLVM_USE_SANITIZER=MemoryWithOrigins  -DCMAKE_INSTALL_PREFIX=/opt && \
+    cmake -G Ninja -S runtimes -B build \
+      -DLLVM_ENABLE_RUNTIMES="libunwind;libcxx;libcxxabi" \
+      -DLLVM_USE_SANITIZER=MemoryWithOrigins \
+      -DLIBCXXABI_USE_LLVM_UNWINDER=ON \
+      -DLIBCXX_CXX_ABI=libcxxabi \
+      -DLIBCXXABI_LIBCXX_INCLUDES=ON \
+      -DCMAKE_INSTALL_PREFIX=/opt && \
     ninja -C build cxx cxxabi && \
     ninja -C build install-cxx install-cxxabi
 
