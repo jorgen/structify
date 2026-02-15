@@ -97,6 +97,61 @@ context.tokenizer.allowSuperfluousComma(true);
 context.parseTo(config_obj);
 ```
 
+## YAML Parsing
+
+json_struct has built-in YAML support - no external library needed. Enable YAML mode on the tokenizer and parse directly into the same C++ structs you use for JSON.
+
+**Supported YAML features:** nested mappings, sequences, block scalars (`|` and `>`), flow collections (`[...]`, `{...}`), quoted strings with escapes, comments, and document markers (`---`).
+
+**Example YAML config:**
+```yaml
+# Application configuration
+name: my-service
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  workers: 4
+
+features:
+  - authentication
+  - rate-limiting
+  - metrics
+
+description: >
+  A high-performance API gateway
+  that handles authentication and
+  request routing.
+```
+
+**Define structs and parse:**
+```c++
+struct ServerSettings
+{
+  std::string host;
+  int port = 0;
+  int workers = 1;
+  JS_OBJ(host, port, workers);
+};
+
+struct AppConfig
+{
+  std::string name;
+  ServerSettings server;
+  std::vector<std::string> features;
+  std::string description;
+  JS_OBJ(name, server, features, description);
+};
+
+AppConfig config;
+JS::ParseContext context;
+context.tokenizer.allowYaml(true);
+context.tokenizer.addData(yaml_data, yaml_size);
+context.parseTo(config);
+```
+
+See the full [YAML parsing example](https://github.com/jorgen/json_struct/blob/master/examples/15_yaml_parsing.cpp) for a complete working program with nested objects, block scalars, and lists.
+
 ## Dynamic JSON with Maps
 
 When the JSON structure depends on runtime values, you can parse into a `JS::Map` first, inspect the data, then dispatch to the appropriate type. For example, consider JSON describing different vehicle types:

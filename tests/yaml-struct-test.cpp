@@ -98,10 +98,10 @@ struct WithFlowValues
 
 TEST_CASE("yaml_parse_simple_struct", "[yaml][struct]")
 {
-  const char yaml[] =
-    "name: John\n"
-    "age: 30\n"
-    "score: 95.5\n";
+  const char yaml[] = R"(name: John
+age: 30
+score: 95.5
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -118,11 +118,11 @@ TEST_CASE("yaml_parse_simple_struct", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_nested_struct", "[yaml][struct]")
 {
-  const char yaml[] =
-    "name: John\n"
-    "address:\n"
-    "  street: 123 Main St\n"
-    "  city: Springfield\n";
+  const char yaml[] = R"(name: John
+address:
+  street: 123 Main St
+  city: Springfield
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -139,12 +139,12 @@ TEST_CASE("yaml_parse_nested_struct", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_vector_of_ints", "[yaml][struct]")
 {
-  const char yaml[] =
-    "name: test\n"
-    "scores:\n"
-    "  - 100\n"
-    "  - 95\n"
-    "  - 88\n";
+  const char yaml[] = R"(name: test
+scores:
+  - 100
+  - 95
+  - 88
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -163,11 +163,11 @@ TEST_CASE("yaml_parse_vector_of_ints", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_vector_of_strings", "[yaml][struct]")
 {
-  const char yaml[] =
-    "items:\n"
-    "  - apple\n"
-    "  - banana\n"
-    "  - cherry\n";
+  const char yaml[] = R"(items:
+  - apple
+  - banana
+  - cherry
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -185,13 +185,13 @@ TEST_CASE("yaml_parse_vector_of_strings", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_vector_of_structs", "[yaml][struct]")
 {
-  const char yaml[] =
-    "- name: John\n"
-    "  age: 30\n"
-    "- name: Jane\n"
-    "  age: 25\n"
-    "- name: Bob\n"
-    "  age: 35\n";
+  const char yaml[] = R"(- name: John
+  age: 30
+- name: Jane
+  age: 25
+- name: Bob
+  age: 35
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -212,11 +212,11 @@ TEST_CASE("yaml_parse_vector_of_structs", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_booleans_yes_no", "[yaml][struct]")
 {
-  const char yaml[] =
-    "enabled: yes\n"
-    "active: true\n"
-    "visible: on\n"
-    "debug: no\n";
+  const char yaml[] = R"(enabled: yes
+active: true
+visible: on
+debug: no
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -234,9 +234,9 @@ TEST_CASE("yaml_parse_booleans_yes_no", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_optional_members", "[yaml][struct]")
 {
-  const char yaml[] =
-    "name: John\n"
-    "age: 30\n";
+  const char yaml[] = R"(name: John
+age: 30
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -253,10 +253,10 @@ TEST_CASE("yaml_parse_optional_members", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_deeply_nested", "[yaml][struct]")
 {
-  const char yaml[] =
-    "level2:\n"
-    "  level3:\n"
-    "    value: deep\n";
+  const char yaml[] = R"(level2:
+  level3:
+    value: deep
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -271,14 +271,14 @@ TEST_CASE("yaml_parse_deeply_nested", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_mixed_struct", "[yaml][struct]")
 {
-  const char yaml[] =
-    "name: Alice\n"
-    "age: 28\n"
-    "active: true\n"
-    "hobbies:\n"
-    "  - reading\n"
-    "  - gaming\n"
-    "  - cooking\n";
+  const char yaml[] = R"(name: Alice
+age: 28
+active: true
+hobbies:
+  - reading
+  - gaming
+  - cooking
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -299,11 +299,11 @@ TEST_CASE("yaml_parse_mixed_struct", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_with_document_marker", "[yaml][struct]")
 {
-  const char yaml[] =
-    "---\n"
-    "name: John\n"
-    "age: 30\n"
-    "score: 100.0\n";
+  const char yaml[] = R"(---
+name: John
+age: 30
+score: 100.0
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -320,9 +320,9 @@ TEST_CASE("yaml_parse_with_document_marker", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_flow_array_value", "[yaml][struct]")
 {
-  const char yaml[] =
-    "name: test\n"
-    "nums: [1, 2, 3]\n";
+  const char yaml[] = R"(name: test
+nums: [1, 2, 3]
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -341,12 +341,12 @@ TEST_CASE("yaml_parse_flow_array_value", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_extra_members_ignored", "[yaml][struct]")
 {
-  const char yaml[] =
-    "name: John\n"
-    "age: 30\n"
-    "score: 95.5\n"
-    "extra_field: ignored\n"
-    "another: also_ignored\n";
+  const char yaml[] = R"(name: John
+age: 30
+score: 95.5
+extra_field: ignored
+another: also_ignored
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -363,11 +363,11 @@ TEST_CASE("yaml_parse_extra_members_ignored", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_with_comments", "[yaml][struct]")
 {
-  const char yaml[] =
-    "# Configuration\n"
-    "name: John # person name\n"
-    "age: 30\n"
-    "score: 100.0\n";
+  const char yaml[] = R"(# Configuration
+name: John # person name
+age: 30
+score: 100.0
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -383,10 +383,10 @@ TEST_CASE("yaml_parse_with_comments", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_quoted_strings", "[yaml][struct]")
 {
-  const char yaml[] =
-    "name: \"John Doe\"\n"
-    "age: 30\n"
-    "score: 0.0\n";
+  const char yaml[] = R"(name: "John Doe"
+age: 30
+score: 0.0
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -401,10 +401,10 @@ TEST_CASE("yaml_parse_quoted_strings", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_negative_numbers", "[yaml][struct]")
 {
-  const char yaml[] =
-    "name: test\n"
-    "age: -5\n"
-    "score: -3.14\n";
+  const char yaml[] = R"(name: test
+age: -5
+score: -3.14
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -420,12 +420,12 @@ TEST_CASE("yaml_parse_negative_numbers", "[yaml][struct]")
 
 TEST_CASE("yaml_parse_literal_block_scalar", "[yaml][struct]")
 {
-  const char yaml[] =
-    "name: |\n"
-    "  line one\n"
-    "  line two\n"
-    "age: 30\n"
-    "score: 0.0\n";
+  const char yaml[] = R"(name: |
+  line one
+  line two
+age: 30
+score: 0.0
+)";
 
   JS::ParseContext context;
   context.tokenizer.allowYaml(true);
@@ -437,6 +437,388 @@ TEST_CASE("yaml_parse_literal_block_scalar", "[yaml][struct]")
   REQUIRE(context.error == JS::Error::NoError);
   REQUIRE(s.name == "line one\nline two\n");
   REQUIRE(s.age == 30);
+}
+
+// --- Test 1: Server configuration with block scalars and nested objects ---
+
+struct TlsConfig
+{
+  bool enabled;
+  std::string cert;
+  JS_OBJ(enabled, cert);
+};
+
+struct DatabaseConfig
+{
+  std::string host;
+  int port;
+  std::string name;
+  JS_OBJ(host, port, name);
+};
+
+struct ServerConfig
+{
+  std::string host;
+  int port;
+  bool debug;
+  DatabaseConfig database;
+  TlsConfig tls;
+  std::string description;
+  JS_OBJ(host, port, debug, database, tls, description);
+};
+
+TEST_CASE("yaml_server_config_block_scalars", "[yaml][struct]")
+{
+  const char yaml[] = R"(host: 0.0.0.0
+port: 8080
+debug: false
+database:
+  host: db.example.com
+  port: 5432
+  name: myapp
+tls:
+  enabled: true
+  cert: |
+    -----BEGIN CERTIFICATE-----
+    MIIBxTCCAWugAwIBAgIJALP2kEZ5
+    -----END CERTIFICATE-----
+description: >
+  This server handles
+  all incoming API requests
+  for the application.
+)";
+
+  JS::ParseContext context;
+  context.tokenizer.allowYaml(true);
+  context.tokenizer.addData(yaml, sizeof(yaml) - 1);
+
+  ServerConfig s;
+  context.parseTo(s);
+
+  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(s.host == "0.0.0.0");
+  REQUIRE(s.port == 8080);
+  REQUIRE(s.debug == false);
+  REQUIRE(s.database.host == "db.example.com");
+  REQUIRE(s.database.port == 5432);
+  REQUIRE(s.database.name == "myapp");
+  REQUIRE(s.tls.enabled == true);
+  REQUIRE(s.tls.cert == "-----BEGIN CERTIFICATE-----\nMIIBxTCCAWugAwIBAgIJALP2kEZ5\n-----END CERTIFICATE-----\n");
+  REQUIRE(s.description == "This server handles all incoming API requests for the application.\n");
+}
+
+// --- Test 2: CI pipeline configuration ---
+
+struct PipelineStage
+{
+  std::string name;
+  std::string image;
+  std::vector<std::string> commands;
+  JS_OBJ(name, image, commands);
+};
+
+struct Pipeline
+{
+  std::string version;
+  std::vector<PipelineStage> stages;
+  JS_OBJ(version, stages);
+};
+
+TEST_CASE("yaml_ci_pipeline_config", "[yaml][struct]")
+{
+  const char yaml[] = R"(version: '3'
+stages:
+  - name: build
+    image: gcc:latest
+    commands:
+      - mkdir build
+      - cmake ..
+      - make -j4
+  - name: test
+    image: gcc:latest
+    commands:
+      - cd build
+      - ctest --output-on-failure
+  - name: deploy
+    image: alpine:3.18
+    commands:
+      - ./deploy.sh
+)";
+
+  JS::ParseContext context;
+  context.tokenizer.allowYaml(true);
+  context.tokenizer.addData(yaml, sizeof(yaml) - 1);
+
+  Pipeline s;
+  context.parseTo(s);
+
+  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(s.version == "3");
+  REQUIRE(s.stages.size() == 3);
+
+  REQUIRE(s.stages[0].name == "build");
+  REQUIRE(s.stages[0].image == "gcc:latest");
+  REQUIRE(s.stages[0].commands.size() == 3);
+  REQUIRE(s.stages[0].commands[0] == "mkdir build");
+  REQUIRE(s.stages[0].commands[1] == "cmake ..");
+  REQUIRE(s.stages[0].commands[2] == "make -j4");
+
+  REQUIRE(s.stages[1].name == "test");
+  REQUIRE(s.stages[1].image == "gcc:latest");
+  REQUIRE(s.stages[1].commands.size() == 2);
+  REQUIRE(s.stages[1].commands[0] == "cd build");
+  REQUIRE(s.stages[1].commands[1] == "ctest --output-on-failure");
+
+  REQUIRE(s.stages[2].name == "deploy");
+  REQUIRE(s.stages[2].image == "alpine:3.18");
+  REQUIRE(s.stages[2].commands.size() == 1);
+  REQUIRE(s.stages[2].commands[0] == "./deploy.sh");
+}
+
+// --- Test 3: Flow collections inline ---
+
+struct Point
+{
+  int x;
+  int y;
+  JS_OBJ(x, y);
+};
+
+struct FlowCollections
+{
+  std::string name;
+  std::vector<int> values;
+  std::vector<std::string> tags;
+  Point origin;
+  JS_OBJ(name, values, tags, origin);
+};
+
+TEST_CASE("yaml_flow_collections_struct", "[yaml][struct]")
+{
+  const char yaml[] = R"(name: shape
+values: [10, 20, 30, 40]
+tags: [geometry, 2d, primary]
+origin: {x: 5, y: 10}
+)";
+
+  JS::ParseContext context;
+  context.tokenizer.allowYaml(true);
+  context.tokenizer.addData(yaml, sizeof(yaml) - 1);
+
+  FlowCollections s;
+  context.parseTo(s);
+
+  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(s.name == "shape");
+  REQUIRE(s.values.size() == 4);
+  REQUIRE(s.values[0] == 10);
+  REQUIRE(s.values[1] == 20);
+  REQUIRE(s.values[2] == 30);
+  REQUIRE(s.values[3] == 40);
+  REQUIRE(s.tags.size() == 3);
+  REQUIRE(s.tags[0] == "geometry");
+  REQUIRE(s.tags[1] == "2d");
+  REQUIRE(s.tags[2] == "primary");
+  REQUIRE(s.origin.x == 5);
+  REQUIRE(s.origin.y == 10);
+}
+
+// --- Test 4: Quoted strings with special characters ---
+
+struct QuotedStrings
+{
+  std::string double_escaped;
+  std::string with_tab;
+  std::string with_quote;
+  std::string single_quoted;
+  JS_OBJ(double_escaped, with_tab, with_quote, single_quoted);
+};
+
+TEST_CASE("yaml_quoted_strings_struct", "[yaml][struct]")
+{
+  const char yaml[] = R"(double_escaped: "line1\nline2\nline3"
+with_tab: "col1\tcol2\tcol3"
+with_quote: "she said \"hello\""
+single_quoted: 'it''s a test'
+)";
+
+  JS::ParseContext context;
+  context.tokenizer.allowYaml(true);
+  context.tokenizer.addData(yaml, sizeof(yaml) - 1);
+
+  QuotedStrings s;
+  context.parseTo(s);
+
+  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(s.double_escaped == "line1\nline2\nline3");
+  REQUIRE(s.with_tab == "col1\tcol2\tcol3");
+  REQUIRE(s.with_quote == "she said \"hello\"");
+  REQUIRE(s.single_quoted == "it's a test");
+}
+
+// --- Test 5: Complex nested config (Kubernetes-pod-like) ---
+
+struct EnvVar
+{
+  std::string name;
+  std::string value;
+  JS_OBJ(name, value);
+};
+
+struct ContainerPort
+{
+  int containerPort;
+  JS_OBJ(containerPort);
+};
+
+struct Container
+{
+  std::string name;
+  std::string image;
+  std::vector<ContainerPort> ports;
+  std::vector<EnvVar> env;
+  JS_OBJ(name, image, ports, env);
+};
+
+struct Labels
+{
+  std::string app;
+  std::string tier;
+  JS_OBJ(app, tier);
+};
+
+struct Metadata
+{
+  std::string name;
+  Labels labels;
+  JS_OBJ(name, labels);
+};
+
+struct PodSpec
+{
+  std::vector<Container> containers;
+  JS_OBJ(containers);
+};
+
+struct PodConfig
+{
+  std::string kind;
+  Metadata metadata;
+  PodSpec spec;
+  JS_OBJ(kind, metadata, spec);
+};
+
+TEST_CASE("yaml_complex_nested_k8s_like", "[yaml][struct]")
+{
+  const char yaml[] = R"(kind: Pod
+metadata:
+  name: my-app
+  labels:
+    app: web-server
+    tier: frontend
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.25
+      ports:
+        - containerPort: 80
+        - containerPort: 443
+      env:
+        - name: ENV
+          value: production
+        - name: LOG_LEVEL
+          value: warn
+    - name: sidecar
+      image: fluent/fluentd:v1.16
+      ports:
+        - containerPort: 24224
+      env:
+        - name: FLUSH_INTERVAL
+          value: 5s
+)";
+
+  JS::ParseContext context;
+  context.tokenizer.allowYaml(true);
+  context.tokenizer.addData(yaml, sizeof(yaml) - 1);
+
+  PodConfig s;
+  context.parseTo(s);
+
+  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(s.kind == "Pod");
+  REQUIRE(s.metadata.name == "my-app");
+  REQUIRE(s.metadata.labels.app == "web-server");
+  REQUIRE(s.metadata.labels.tier == "frontend");
+
+  REQUIRE(s.spec.containers.size() == 2);
+
+  auto &c0 = s.spec.containers[0];
+  REQUIRE(c0.name == "nginx");
+  REQUIRE(c0.image == "nginx:1.25");
+  REQUIRE(c0.ports.size() == 2);
+  REQUIRE(c0.ports[0].containerPort == 80);
+  REQUIRE(c0.ports[1].containerPort == 443);
+  REQUIRE(c0.env.size() == 2);
+  REQUIRE(c0.env[0].name == "ENV");
+  REQUIRE(c0.env[0].value == "production");
+  REQUIRE(c0.env[1].name == "LOG_LEVEL");
+  REQUIRE(c0.env[1].value == "warn");
+
+  auto &c1 = s.spec.containers[1];
+  REQUIRE(c1.name == "sidecar");
+  REQUIRE(c1.image == "fluent/fluentd:v1.16");
+  REQUIRE(c1.ports.size() == 1);
+  REQUIRE(c1.ports[0].containerPort == 24224);
+  REQUIRE(c1.env.size() == 1);
+  REQUIRE(c1.env[0].name == "FLUSH_INTERVAL");
+  REQUIRE(c1.env[0].value == "5s");
+}
+
+// --- Test 6: Document with comments throughout ---
+
+struct CommentedConfig
+{
+  std::string name;
+  int workers;
+  bool verbose;
+  std::vector<std::string> endpoints;
+  JS_OBJ(name, workers, verbose, endpoints);
+};
+
+TEST_CASE("yaml_comments_everywhere", "[yaml][struct]")
+{
+  const char yaml[] = R"(# Top-level application config
+# Version 2.0
+
+name: my-service # service name
+workers: 4 # number of worker threads
+verbose: true # enable verbose logging
+# The endpoints section lists all API routes
+endpoints: # begin list
+  # health check endpoint
+  - /health
+  - /api/v1/users # user management
+  # this is the orders endpoint
+  - /api/v1/orders
+  - /metrics # prometheus metrics
+)";
+
+  JS::ParseContext context;
+  context.tokenizer.allowYaml(true);
+  context.tokenizer.addData(yaml, sizeof(yaml) - 1);
+
+  CommentedConfig s;
+  context.parseTo(s);
+
+  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(s.name == "my-service");
+  REQUIRE(s.workers == 4);
+  REQUIRE(s.verbose == true);
+  REQUIRE(s.endpoints.size() == 4);
+  REQUIRE(s.endpoints[0] == "/health");
+  REQUIRE(s.endpoints[1] == "/api/v1/users");
+  REQUIRE(s.endpoints[2] == "/api/v1/orders");
+  REQUIRE(s.endpoints[3] == "/metrics");
 }
 
 } // namespace yaml_struct_test
