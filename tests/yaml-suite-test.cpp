@@ -155,7 +155,81 @@ struct TestValue
 
 typedef std::map<std::string, TestValue> AnchorMap;
 
-static TestValue scalarFromToken(const JS::Token &token, AnchorMap &anchors)
+static std::string jsonUnescapeString(const std::string &raw)
+{
+  std::string result;
+  result.reserve(raw.size());
+  for (size_t i = 0; i < raw.size(); i++)
+  {
+    if (raw[i] == '\\' && i + 1 < raw.size())
+    {
+      switch (raw[i + 1])
+      {
+      case '"': result += '"'; i++; break;
+      case '\\': result += '\\'; i++; break;
+      case '/': result += '/'; i++; break;
+      case 'b': result += '\b'; i++; break;
+      case 'f': result += '\f'; i++; break;
+      case 'n': result += '\n'; i++; break;
+      case 'r': result += '\r'; i++; break;
+      case 't': result += '\t'; i++; break;
+      case 'u':
+        if (i + 5 < raw.size())
+        {
+          auto hexval = [](char c) -> int {
+            if (c >= '0' && c <= '9') return c - '0';
+            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+            return -1;
+          };
+          int h0 = hexval(raw[i+2]), h1 = hexval(raw[i+3]),
+              h2 = hexval(raw[i+4]), h3 = hexval(raw[i+5]);
+          if (h0 >= 0 && h1 >= 0 && h2 >= 0 && h3 >= 0)
+          {
+            uint32_t cp = (uint32_t)((h0 << 12) | (h1 << 8) | (h2 << 4) | h3);
+            // Handle surrogate pairs
+            if (cp >= 0xD800 && cp <= 0xDBFF && i + 11 < raw.size() &&
+                raw[i+6] == '\\' && raw[i+7] == 'u')
+            {
+              int l0 = hexval(raw[i+8]), l1 = hexval(raw[i+9]),
+                  l2 = hexval(raw[i+10]), l3 = hexval(raw[i+11]);
+              if (l0 >= 0 && l1 >= 0 && l2 >= 0 && l3 >= 0)
+              {
+                uint32_t low = (uint32_t)((l0 << 12) | (l1 << 8) | (l2 << 4) | l3);
+                if (low >= 0xDC00 && low <= 0xDFFF)
+                {
+                  cp = 0x10000 + ((cp - 0xD800) << 10) + (low - 0xDC00);
+                  i += 6;
+                }
+              }
+            }
+            // Encode as UTF-8
+            if (cp <= 0x7F) result += (char)cp;
+            else if (cp <= 0x7FF) { result += (char)(0xC0 | (cp >> 6)); result += (char)(0x80 | (cp & 0x3F)); }
+            else if (cp <= 0xFFFF) { result += (char)(0xE0 | (cp >> 12)); result += (char)(0x80 | ((cp >> 6) & 0x3F)); result += (char)(0x80 | (cp & 0x3F)); }
+            else { result += (char)(0xF0 | (cp >> 18)); result += (char)(0x80 | ((cp >> 12) & 0x3F)); result += (char)(0x80 | ((cp >> 6) & 0x3F)); result += (char)(0x80 | (cp & 0x3F)); }
+            i += 5;
+          }
+          else
+            result += raw[i];
+        }
+        else
+          result += raw[i];
+        break;
+      default:
+        result += raw[i];
+        break;
+      }
+    }
+    else
+    {
+      result += raw[i];
+    }
+  }
+  return result;
+}
+
+static TestValue scalarFromToken(const JS::Token &token, AnchorMap &anchors, bool json_mode = false)
 {
   // Handle alias tokens
   if (token.value_type == JS::Type::Alias)
@@ -187,6 +261,8 @@ static TestValue scalarFromToken(const JS::Token &token, AnchorMap &anchors)
   case JS::Type::String:
   case JS::Type::Ascii:
     val.kind = TestValue::String;
+    if (json_mode && token.value_type == JS::Type::String)
+      val.scalar = jsonUnescapeString(val.scalar);
     break;
   default:
     val.kind = TestValue::String;
@@ -205,7 +281,7 @@ static TestValue scalarFromToken(const JS::Token &token, AnchorMap &anchors)
 
 static const int MAX_TOKENS = 10000;
 
-static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token, int &token_count, AnchorMap &anchors)
+static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token, int &token_count, AnchorMap &anchors, bool json_mode = false)
 {
   TestValue val;
   if (start_token.value_type == JS::Type::ObjectStart)
@@ -223,6 +299,8 @@ static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token
         break;
 
       std::string key(inner.name.data, inner.name.size);
+      if (json_mode && inner.name_type == JS::Type::String)
+        key = jsonUnescapeString(key);
 
       // Resolve alias keys (when *alias is used as a mapping key, name_type == Alias)
       if (inner.name_type == JS::Type::Alias && !key.empty())
@@ -232,13 +310,22 @@ static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token
           key = anchor_it->second.scalar;
       }
 
+      // Record key-side anchor (e.g., &a key: value → anchor "a" maps to key value)
+      if (inner.name_anchor.size > 0)
+      {
+        TestValue key_val;
+        key_val.kind = TestValue::String;
+        key_val.scalar = key;
+        anchors[std::string(inner.name_anchor.data, inner.name_anchor.size)] = key_val;
+      }
+
       if (inner.value_type == JS::Type::Alias)
       {
-        val.object_members.push_back({key, scalarFromToken(inner, anchors)});
+        val.object_members.push_back({key, scalarFromToken(inner, anchors, json_mode)});
       }
       else if (inner.value_type == JS::Type::ObjectStart || inner.value_type == JS::Type::ArrayStart)
       {
-        TestValue child = parseContainer(tok, inner, token_count, anchors);
+        TestValue child = parseContainer(tok, inner, token_count, anchors, json_mode);
         // Record anchor on container if present
         if (inner.anchor.size > 0)
         {
@@ -249,7 +336,7 @@ static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token
       }
       else
       {
-        val.object_members.push_back({key, scalarFromToken(inner, anchors)});
+        val.object_members.push_back({key, scalarFromToken(inner, anchors, json_mode)});
       }
     }
   }
@@ -269,11 +356,11 @@ static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token
 
       if (inner.value_type == JS::Type::Alias)
       {
-        val.array_items.push_back(scalarFromToken(inner, anchors));
+        val.array_items.push_back(scalarFromToken(inner, anchors, json_mode));
       }
       else if (inner.value_type == JS::Type::ObjectStart || inner.value_type == JS::Type::ArrayStart)
       {
-        TestValue child = parseContainer(tok, inner, token_count, anchors);
+        TestValue child = parseContainer(tok, inner, token_count, anchors, json_mode);
         if (inner.anchor.size > 0)
         {
           std::string anchor_name(inner.anchor.data, inner.anchor.size);
@@ -283,14 +370,14 @@ static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token
       }
       else
       {
-        val.array_items.push_back(scalarFromToken(inner, anchors));
+        val.array_items.push_back(scalarFromToken(inner, anchors, json_mode));
       }
     }
   }
   return val;
 }
 
-static TestValue tokensToValue(JS::Tokenizer &tok)
+static TestValue tokensToValue(JS::Tokenizer &tok, bool json_mode = false)
 {
   AnchorMap anchors;
   JS::Token token;
@@ -303,12 +390,12 @@ static TestValue tokensToValue(JS::Tokenizer &tok)
   }
   if (token.value_type == JS::Type::Alias)
   {
-    return scalarFromToken(token, anchors);
+    return scalarFromToken(token, anchors, json_mode);
   }
   if (token.value_type == JS::Type::ObjectStart || token.value_type == JS::Type::ArrayStart)
   {
     int token_count = 0;
-    TestValue result = parseContainer(tok, token, token_count, anchors);
+    TestValue result = parseContainer(tok, token, token_count, anchors, json_mode);
     if (token.anchor.size > 0)
     {
       std::string anchor_name(token.anchor.data, token.anchor.size);
@@ -316,7 +403,7 @@ static TestValue tokensToValue(JS::Tokenizer &tok)
     }
     return result;
   }
-  return scalarFromToken(token, anchors);
+  return scalarFromToken(token, anchors, json_mode);
 }
 
 static std::string readFile(const fs::path &path)
@@ -373,18 +460,8 @@ TEST_CASE("yaml_test_suite", "[yaml][suite]")
   // - document markers (---/...) in non-trivial positions
   // Remove tests from this set as the tokenizer is improved.
   std::set<std::string> known_failures = {
-    "2AUY", "2EBW", "2SXE", "36F6", "3MYT", "4CQQ", "4QFQ", "4WA9",
-    "4ZYM", "565N", "5BVJ", "5GBF", "5WE3", "6FWR", "6H3V", "6HB6",
-    "6SLA", "6VJK", "6WPF", "735Y", "7A4E", "7T8X", "7TMG", "82AN",
-    "8KB6", "8UDB", "93JH", "9BXH", "9KAX", "9SA2", "9TFX", "9YRD",
-    "A2M4", "A6F9", "A984", "AB8U", "AZW3", "BU8L", "CPZ3", "CT4Q",
-    "DWX9", "E76Z", "EX5H", "EXG3", "F2C7", "F6MC", "F8F9", "FBC9",
-    "G4RS", "G992", "H2RW", "HMK4", "HMQ5", "HS5T", "J3BT", "JTV5",
-    "K3WX", "K527", "K858", "KSS4", "M29M", "M5C3", "M6YH", "M7A3",
-    "M9B4", "MJS9", "MYW6", "MZX3", "NAT4", "NB6Z", "NJ66", "NP9H",
-    "P2AD", "P76L", "PRH3", "Q8AD", "R4YG", "RZT7", "S9E8", "SKE5",
-    "T26H", "T4YY", "TL85", "TS54", "U3XV", "UGM3", "UT92", "UV7Q",
-    "W42U", "W4TN", "XLQ9", "XV9V", "Z67P",
+    "2SXE", // Complex anchor reuse on same line (&a: key: &a value)
+    "P76L", // Requires %TAG directive support
   };
 
   std::set<std::string> extra_skip;
@@ -475,7 +552,7 @@ TEST_CASE("yaml_test_suite", "[yaml][suite]")
       // Parse JSON reference
       JS::Tokenizer json_tok;
       json_tok.addData(json_input.c_str(), json_input.size());
-      TestValue json_val = tokensToValue(json_tok);
+      TestValue json_val = tokensToValue(json_tok, true);
 
       // If JSON parsing returned Null and input isn't empty, try YAML parser
       // (handles bare scalars like "foo" that aren't valid standalone JSON)

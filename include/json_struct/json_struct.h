@@ -347,8 +347,9 @@ struct Token
   Type name_type;
   Type value_type;
   // YAML metadata (empty when not applicable):
-  DataRef anchor;  // anchor name (without &), set on the token that defines it
-  DataRef tag;     // tag string (without !), set on tagged values
+  DataRef anchor;       // anchor name (without &), set on the value side
+  DataRef name_anchor;  // anchor name (without &), set on the key/name side
+  DataRef tag;          // tag string (without !), set on tagged values
 };
 
 namespace Internal
@@ -1445,12 +1446,16 @@ private:
                            const char **out_data, size_t *out_len, Type *out_type);
   Error yamlParseMultilineScalar(const char *data, size_t size, size_t &pos, char indicator);
   Error yamlParseMultilineScalarEx(const char *data, size_t size, size_t &pos,
-                                   char indicator, int chomp_mode, int explicit_indent);
+                                   char indicator, int chomp_mode, int explicit_indent,
+                                   int context_indent = 0);
   void yamlParseBlockScalarHeader(const char *header, size_t header_len,
                                   char *indicator, int *chomp_mode, int *explicit_indent);
   void yamlSkipFlowWhitespace(const char *data, size_t size, size_t &pos);
   void yamlApplyPendingMetadata(Token &t);
   void yamlExtractMetadata(const char *&content, size_t &len);
+  std::string yamlAccumulateMultilinePlainScalar(const char *first_text, size_t first_len,
+                                                  const char *data, size_t size, size_t &pos,
+                                                  int min_indent);
 };
 
 namespace Internal
@@ -10024,7 +10029,7 @@ inline size_t Tokenizer::yamlReadLine(const char *data, size_t size, size_t pos,
 inline size_t Tokenizer::yamlMeasureIndent(const char *line, size_t len)
 {
   size_t indent = 0;
-  while (indent < len && line[indent] == ' ')
+  while (indent < len && (line[indent] == ' ' || line[indent] == '\t'))
     indent++;
   return indent;
 }
@@ -10205,6 +10210,221 @@ inline Type Tokenizer::yamlClassifyScalar(const char *data, size_t size)
   return Type::Ascii;
 }
 
+static int yamlHexVal(char c)
+{
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  return -1;
+}
+
+static void yamlAppendUtf8(std::string &out, uint32_t cp)
+{
+  if (cp <= 0x7F)
+  {
+    out += (char)cp;
+  }
+  else if (cp <= 0x7FF)
+  {
+    out += (char)(0xC0 | (cp >> 6));
+    out += (char)(0x80 | (cp & 0x3F));
+  }
+  else if (cp <= 0xFFFF)
+  {
+    out += (char)(0xE0 | (cp >> 12));
+    out += (char)(0x80 | ((cp >> 6) & 0x3F));
+    out += (char)(0x80 | (cp & 0x3F));
+  }
+  else if (cp <= 0x10FFFF)
+  {
+    out += (char)(0xF0 | (cp >> 18));
+    out += (char)(0x80 | ((cp >> 12) & 0x3F));
+    out += (char)(0x80 | ((cp >> 6) & 0x3F));
+    out += (char)(0x80 | (cp & 0x3F));
+  }
+}
+
+// Helper: fold newlines in quoted strings. Processes a sequence of newlines starting at inner[i].
+// Returns the new index (pointing at last consumed character).
+static size_t yamlFoldQuotedNewlines(const char *inner, size_t inner_len, size_t i, std::string &result)
+{
+  // Trim trailing whitespace before the newline
+  while (!result.empty() && (result.back() == ' ' || result.back() == '\t'))
+    result.pop_back();
+
+  // Count consecutive line breaks (including intervening whitespace-only lines)
+  int newline_count = 0;
+  while (i < inner_len && (inner[i] == '\n' || inner[i] == '\r'))
+  {
+    // Skip \r\n pair
+    if (inner[i] == '\r' && i + 1 < inner_len && inner[i + 1] == '\n')
+      i++;
+    newline_count++;
+    i++;
+    // Skip whitespace (indentation of next line)
+    while (i < inner_len && (inner[i] == ' ' || inner[i] == '\t'))
+      i++;
+  }
+
+  if (newline_count >= 2)
+  {
+    // n line breaks -> n-1 literal newlines
+    for (int j = 0; j < newline_count - 1; j++)
+      result += '\n';
+  }
+  else
+  {
+    // Single line break -> space
+    result += ' ';
+  }
+
+  return i - 1; // -1 because the for loop will increment
+}
+
+// Accumulate a multiline plain scalar. first_text/first_len is the text of the first line.
+// data/size/pos are the full buffer (pos is after the first line).
+// min_indent is the minimum indent for continuation lines (lines must have indent > min_indent).
+// Returns the accumulated string with proper folding.
+inline std::string Tokenizer::yamlAccumulateMultilinePlainScalar(
+    const char *first_text, size_t first_len,
+    const char *data, size_t size, size_t &pos, int min_indent)
+{
+  std::string result(first_text, first_len);
+  // Strip trailing whitespace from first line
+  while (!result.empty() && (result.back() == ' ' || result.back() == '\t'))
+    result.pop_back();
+
+  int blank_count = 0;
+
+  while (pos < size)
+  {
+    size_t save_pos = pos;
+    const char *line_start;
+    size_t line_len;
+    size_t next_pos = yamlReadLine(data, size, pos, &line_start, &line_len);
+
+    // Check for blank line
+    if (yamlIsBlankOrComment(line_start, line_len))
+    {
+      // But only count blank (not comment) lines for folding purposes
+      bool is_pure_blank = true;
+      for (size_t bi = 0; bi < line_len; bi++)
+      {
+        if (line_start[bi] != ' ' && line_start[bi] != '\t' && line_start[bi] != '\r')
+        {
+          is_pure_blank = false;
+          break;
+        }
+      }
+      if (is_pure_blank)
+        blank_count++;
+      else
+      {
+        // Comment line terminates plain scalar
+        pos = save_pos;
+        break;
+      }
+      pos = next_pos;
+      continue;
+    }
+
+    // Check for document markers at column 0
+    if (line_len >= 3)
+    {
+      if ((line_start[0] == '-' && line_start[1] == '-' && line_start[2] == '-') ||
+          (line_start[0] == '.' && line_start[1] == '.' && line_start[2] == '.'))
+      {
+        if (line_len == 3 || line_start[3] == ' ' || line_start[3] == '\t' || line_start[3] == '\r')
+        {
+          pos = save_pos;
+          break;
+        }
+      }
+    }
+
+    int indent = (int)yamlMeasureIndent(line_start, line_len);
+    if (indent <= min_indent)
+    {
+      pos = save_pos;
+      break;
+    }
+
+    const char *content = line_start + indent;
+    size_t content_len = line_len - indent;
+    // Strip trailing whitespace/\r
+    while (content_len > 0 && (content[content_len - 1] == ' ' || content[content_len - 1] == '\t' ||
+           content[content_len - 1] == '\r'))
+      content_len--;
+
+    // Stop at indicators that start new structures
+    // Note: "- " is NOT checked here because in a plain scalar's multiline continuation,
+    // "- " at deeper indent is literal text, not a sequence indicator.
+    if (content_len >= 1 && (content[0] == '|' || content[0] == '>'))
+    {
+      pos = save_pos;
+      break;
+    }
+    if (content_len >= 1 && (content[0] == '{' || content[0] == '['))
+    {
+      pos = save_pos;
+      break;
+    }
+    // Check if this line is a mapping key (has an unquoted colon)
+    size_t colon_pos = yamlFindColon(content, content_len);
+    if (colon_pos != (size_t)-1)
+    {
+      pos = save_pos;
+      break;
+    }
+
+    // Strip trailing comment from content
+    yamlStripTrailingComment(content, &content_len);
+
+    // Fold: blank lines → newlines, single line break → space
+    if (blank_count > 0)
+    {
+      for (int b = 0; b < blank_count; b++)
+        result += '\n';
+      blank_count = 0;
+    }
+    else
+    {
+      result += ' ';
+    }
+    result.append(content, content_len);
+    pos = next_pos;
+  }
+
+  return result;
+}
+
+// Find the end of a quoted string starting at data[start] (which is " or ').
+// Returns position after the closing quote, or (size_t)-1 if not found.
+static size_t yamlFindQuoteEnd(const char *data, size_t size, size_t start)
+{
+  char quote = data[start];
+  size_t i = start + 1;
+  while (i < size)
+  {
+    if (data[i] == quote)
+    {
+      if (quote == '\'' && i + 1 < size && data[i + 1] == '\'')
+      {
+        i += 2;
+        continue;
+      }
+      return i + 1;
+    }
+    if (quote == '"' && data[i] == '\\' && i + 1 < size)
+    {
+      i += 2;
+      continue;
+    }
+    i++;
+  }
+  return (size_t)-1;
+}
+
 inline DataRef Tokenizer::yamlNormalizeScalar(const char *data, size_t size, Type type)
 {
   if (type == Type::Null)
@@ -10312,11 +10532,84 @@ inline DataRef Tokenizer::yamlNormalizeScalar(const char *data, size_t size, Typ
             case ' ':
               result += ' ';
               break;
+            case 'a':
+              result += '\a';
+              break;
+            case 'b':
+              result += '\b';
+              break;
+            case 'v':
+              result += '\v';
+              break;
+            case 'e':
+              result += '\x1B';
+              break;
+            case '_':
+              yamlAppendUtf8(result, 0xA0);
+              break; // NBSP
+            case 'N':
+              yamlAppendUtf8(result, 0x85);
+              break; // NEL
+            case 'L':
+              yamlAppendUtf8(result, 0x2028);
+              break; // LS
+            case 'P':
+              yamlAppendUtf8(result, 0x2029);
+              break; // PS
+            case 'x':
+            {
+              // \xNN - 2 hex digits
+              uint32_t cp = 0;
+              for (int h = 0; h < 2 && i + 1 < inner_len; h++)
+              {
+                int v = yamlHexVal(inner[i + 1]);
+                if (v < 0)
+                  break;
+                cp = (cp << 4) | (uint32_t)v;
+                i++;
+              }
+              yamlAppendUtf8(result, cp);
+              break;
+            }
+            case 'u':
+            {
+              // \uNNNN - 4 hex digits
+              uint32_t cp = 0;
+              for (int h = 0; h < 4 && i + 1 < inner_len; h++)
+              {
+                int v = yamlHexVal(inner[i + 1]);
+                if (v < 0)
+                  break;
+                cp = (cp << 4) | (uint32_t)v;
+                i++;
+              }
+              yamlAppendUtf8(result, cp);
+              break;
+            }
+            case 'U':
+            {
+              // \UNNNNNNNN - 8 hex digits
+              uint32_t cp = 0;
+              for (int h = 0; h < 8 && i + 1 < inner_len; h++)
+              {
+                int v = yamlHexVal(inner[i + 1]);
+                if (v < 0)
+                  break;
+                cp = (cp << 4) | (uint32_t)v;
+                i++;
+              }
+              yamlAppendUtf8(result, cp);
+              break;
+            }
+            case '\r':
+              // Escaped \r\n or bare \r - line joining (eliminate break + leading whitespace on next line)
+              if (i + 1 < inner_len && inner[i + 1] == '\n')
+                i++;
+              while (i + 1 < inner_len && (inner[i + 1] == ' ' || inner[i + 1] == '\t'))
+                i++;
+              break;
             case '\n':
-              // Escaped newline - trim trailing whitespace and skip leading whitespace on next line
-              while (!result.empty() && (result.back() == ' ' || result.back() == '\t'))
-                result.pop_back();
-              result += '\n';
+              // Escaped newline - line joining (eliminate break + leading whitespace on next line)
               while (i + 1 < inner_len && (inner[i + 1] == ' ' || inner[i + 1] == '\t'))
                 i++;
               break;
@@ -10328,25 +10621,7 @@ inline DataRef Tokenizer::yamlNormalizeScalar(const char *data, size_t size, Typ
           }
           else if (inner[i] == '\n' || inner[i] == '\r')
           {
-            // Literal newline in double-quoted string: fold to space
-            // Skip \r\n combination
-            if (inner[i] == '\r' && i + 1 < inner_len && inner[i + 1] == '\n')
-              i++;
-            // Trim trailing whitespace before newline
-            while (!result.empty() && (result.back() == ' ' || result.back() == '\t'))
-              result.pop_back();
-            // Skip leading whitespace on next line
-            while (i + 1 < inner_len && (inner[i + 1] == ' ' || inner[i + 1] == '\t'))
-              i++;
-            // Check for subsequent newlines (blank lines become \n)
-            if (i + 1 < inner_len && (inner[i + 1] == '\n' || inner[i + 1] == '\r'))
-            {
-              result += '\n';
-            }
-            else
-            {
-              result += ' ';
-            }
+            i = yamlFoldQuotedNewlines(inner, inner_len, i, result);
           }
           else
           {
@@ -10388,17 +10663,7 @@ inline DataRef Tokenizer::yamlNormalizeScalar(const char *data, size_t size, Typ
           }
           else if (inner[i] == '\n' || inner[i] == '\r')
           {
-            // Fold newline to space (same as double-quoted)
-            if (inner[i] == '\r' && i + 1 < inner_len && inner[i + 1] == '\n')
-              i++;
-            while (!result.empty() && (result.back() == ' ' || result.back() == '\t'))
-              result.pop_back();
-            while (i + 1 < inner_len && (inner[i + 1] == ' ' || inner[i + 1] == '\t'))
-              i++;
-            if (i + 1 < inner_len && (inner[i + 1] == '\n' || inner[i + 1] == '\r'))
-              result += '\n';
-            else
-              result += ' ';
+            i = yamlFoldQuotedNewlines(inner, inner_len, i, result);
           }
           else
           {
@@ -10419,8 +10684,23 @@ inline DataRef Tokenizer::yamlNormalizeScalar(const char *data, size_t size, Typ
 
 inline void Tokenizer::yamlSkipFlowWhitespace(const char *data, size_t size, size_t &pos)
 {
-  while (pos < size && (data[pos] == ' ' || data[pos] == '\t' || data[pos] == '\r' || data[pos] == '\n'))
-    pos++;
+  while (pos < size)
+  {
+    if (data[pos] == ' ' || data[pos] == '\t' || data[pos] == '\r' || data[pos] == '\n')
+    {
+      pos++;
+    }
+    else if (data[pos] == '#')
+    {
+      // Skip comment to end of line
+      while (pos < size && data[pos] != '\n')
+        pos++;
+    }
+    else
+    {
+      break;
+    }
+  }
 }
 
 inline void Tokenizer::yamlParseFlowScalar(const char *data, size_t size, size_t &pos,
@@ -10479,11 +10759,12 @@ inline void Tokenizer::yamlParseFlowScalar(const char *data, size_t size, size_t
   }
   else
   {
-    // Unquoted scalar - terminated by , } ] or newline
+    // Unquoted scalar - terminated by , } ] (not newline - multiline allowed in flow)
     // Per YAML spec, ':' only terminates when followed by whitespace, flow indicator, or end of input
     size_t start = pos;
-    while (pos < size && data[pos] != ',' && data[pos] != '}' && data[pos] != ']' &&
-           data[pos] != '\n' && data[pos] != '\r')
+    std::string folded;
+    bool multiline = false;
+    while (pos < size && data[pos] != ',' && data[pos] != '}' && data[pos] != ']')
     {
       if (data[pos] == ':')
       {
@@ -10495,14 +10776,76 @@ inline void Tokenizer::yamlParseFlowScalar(const char *data, size_t size, size_t
       }
       if (data[pos] == '#' && pos > start && data[pos - 1] == ' ')
         break;
+      if (data[pos] == '\n' || data[pos] == '\r')
+      {
+        // Fold the current text and continue on next line
+        if (!multiline)
+        {
+          // Copy what we have so far into the folded string
+          folded.assign(data + start, pos - start);
+          // Trim trailing whitespace
+          while (!folded.empty() && (folded.back() == ' ' || folded.back() == '\t'))
+            folded.pop_back();
+          multiline = true;
+        }
+        // Skip whitespace/newlines/comments
+        yamlSkipFlowWhitespace(data, size, pos);
+        // Check if next char is a flow terminator
+        if (pos >= size || data[pos] == ',' || data[pos] == '}' || data[pos] == ']')
+          break;
+        // Check if next char is ':' indicating a mapping key
+        if (data[pos] == ':' &&
+            (pos + 1 >= size || data[pos + 1] == ' ' || data[pos + 1] == '\t' ||
+             data[pos + 1] == ',' || data[pos + 1] == '{' || data[pos + 1] == '}' ||
+             data[pos + 1] == '[' || data[pos + 1] == ']' ||
+             data[pos + 1] == '\n' || data[pos + 1] == '\r'))
+          break;
+        folded += ' '; // fold newline to space
+        // Continue scanning from current pos (start of next logical content)
+        size_t line_start = pos;
+        while (pos < size && data[pos] != ',' && data[pos] != '}' && data[pos] != ']' &&
+               data[pos] != '\n' && data[pos] != '\r')
+        {
+          if (data[pos] == ':')
+          {
+            if (pos + 1 >= size || data[pos + 1] == ' ' || data[pos + 1] == '\t' ||
+                data[pos + 1] == ',' || data[pos + 1] == '{' || data[pos + 1] == '}' ||
+                data[pos + 1] == '[' || data[pos + 1] == ']' ||
+                data[pos + 1] == '\n' || data[pos + 1] == '\r')
+              break;
+          }
+          if (data[pos] == '#' && pos > line_start && data[pos - 1] == ' ')
+            break;
+          pos++;
+        }
+        size_t seg_len = pos - line_start;
+        while (seg_len > 0 && (data[line_start + seg_len - 1] == ' ' || data[line_start + seg_len - 1] == '\t'))
+          seg_len--;
+        folded.append(data + line_start, seg_len);
+        continue; // re-check for more newlines
+      }
       pos++;
     }
-    *out_len = pos - start;
-    // Trim trailing whitespace
-    while (*out_len > 0 && (data[start + *out_len - 1] == ' ' || data[start + *out_len - 1] == '\t'))
-      (*out_len)--;
-    *out_data = data + start;
-    *out_type = yamlClassifyScalar(*out_data, *out_len);
+
+    if (multiline)
+    {
+      // Trim trailing whitespace from folded result
+      while (!folded.empty() && (folded.back() == ' ' || folded.back() == '\t'))
+        folded.pop_back();
+      DataRef owned = yamlOwnedRef(folded);
+      *out_data = owned.data;
+      *out_len = owned.size;
+      *out_type = yamlClassifyScalar(*out_data, *out_len);
+    }
+    else
+    {
+      *out_len = pos - start;
+      // Trim trailing whitespace
+      while (*out_len > 0 && (data[start + *out_len - 1] == ' ' || data[start + *out_len - 1] == '\t'))
+        (*out_len)--;
+      *out_data = data + start;
+      *out_type = yamlClassifyScalar(*out_data, *out_len);
+    }
   }
 }
 
@@ -10529,14 +10872,15 @@ inline Error Tokenizer::yamlParseFlowObjectInner(const char *data, size_t size, 
     Type key_type;
     yamlParseFlowScalar(data, size, pos, &key_data, &key_len, &key_type);
 
-    // Handle quoted key
+    // Handle quoted key - normalize to handle escape sequences and multiline folding
     Type emit_key_type = Type::Ascii;
     const char *emit_key_data = key_data;
     size_t emit_key_len = key_len;
     if (key_type == Type::String && key_len >= 2)
     {
-      emit_key_data = key_data + 1;
-      emit_key_len = key_len - 2;
+      DataRef kr = yamlNormalizeScalar(key_data, key_len, Type::String);
+      emit_key_data = kr.data;
+      emit_key_len = kr.size;
       emit_key_type = Type::String;
     }
 
@@ -10751,6 +11095,42 @@ inline Error Tokenizer::yamlParseFlowArrayInner(const char *data, size_t size, s
       static const char empty_key[] = "";
       yamlParseFlowImplicitMapValue(data, size, pos, empty_key, 0, Type::Ascii);
     }
+    else if (pos < size && data[pos] == '?' &&
+             (pos + 1 >= size || data[pos + 1] == ' ' || data[pos + 1] == '\t' ||
+              data[pos + 1] == '\n' || data[pos + 1] == '\r'))
+    {
+      // Explicit key in flow sequence: [? key : value]
+      pos++; // skip ?
+      yamlSkipFlowWhitespace(data, size, pos);
+      const char *key_data;
+      size_t key_len;
+      Type key_type;
+      yamlParseFlowScalar(data, size, pos, &key_data, &key_len, &key_type);
+      yamlSkipFlowWhitespace(data, size, pos);
+      // Expect ':'
+      if (pos < size && data[pos] == ':')
+      {
+        yamlParseFlowImplicitMapValue(data, size, pos, key_data, key_len, key_type);
+      }
+      else
+      {
+        // ? key without : value - emit as mapping with null value
+        yamlEmitAnonymous(Type::ObjectStart, Internal::yaml_obj_start, 1);
+        Type emit_key_type = Type::Ascii;
+        const char *emit_key_data = key_data;
+        size_t emit_key_len = key_len;
+        if (key_type == Type::String && key_len >= 2)
+        {
+          DataRef kr = yamlNormalizeScalar(key_data, key_len, Type::String);
+          emit_key_data = kr.data;
+          emit_key_len = kr.size;
+          emit_key_type = Type::String;
+        }
+        yamlEmitProperty(emit_key_data, emit_key_len, emit_key_type,
+                         Internal::yaml_null_str, 4, Type::Null);
+        yamlEmitAnonymous(Type::ObjectEnd, Internal::yaml_obj_end, 1);
+      }
+    }
     else
     {
       const char *val_data;
@@ -10827,13 +11207,53 @@ inline Error Tokenizer::yamlParseMultilineScalar(const char *data, size_t size, 
 }
 
 inline Error Tokenizer::yamlParseMultilineScalarEx(const char *data, size_t size, size_t &pos,
-                                                    char indicator, int chomp_mode, int explicit_indent)
+                                                    char indicator, int chomp_mode, int explicit_indent,
+                                                    int context_indent)
 {
   // chomp_mode: 0=clip (default), 1=strip (-), 2=keep (+)
-  // explicit_indent: -1=auto-detect, >0=explicit indent width
+  // explicit_indent: -1=auto-detect, >0=explicit indent width (relative to context_indent)
+  // context_indent: indentation level of the parent context
   // pos should be at the line AFTER the indicator line
-  int block_indent = explicit_indent > 0 ? explicit_indent : -1;
+  int block_indent = explicit_indent > 0 ? (context_indent + explicit_indent) : -1;
+
+  // Pre-scan to find block_indent when auto-detecting, so we can correctly
+  // classify whitespace-only lines that have content beyond block_indent
+  if (block_indent < 0)
+  {
+    size_t scan_pos = pos;
+    while (scan_pos < size)
+    {
+      const char *sl;
+      size_t sll;
+      size_t snp = yamlReadLine(data, size, scan_pos, &sl, &sll);
+      bool sb = true;
+      for (size_t si = 0; si < sll; si++)
+      {
+        if (sl[si] != ' ' && sl[si] != '\t' && sl[si] != '\r')
+        {
+          sb = false;
+          break;
+        }
+      }
+      if (!sb)
+      {
+        int si = (int)yamlMeasureIndent(sl, sll);
+        // Check for document markers
+        if (sll >= 3 && ((sl[0] == '-' && sl[1] == '-' && sl[2] == '-') ||
+                         (sl[0] == '.' && sl[1] == '.' && sl[2] == '.')) &&
+            (sll == 3 || sl[3] == ' ' || sl[3] == '\t' || sl[3] == '\r'))
+          break;
+        if (si > context_indent)
+          block_indent = si;
+        break;
+      }
+      scan_pos = snp;
+    }
+  }
+
   std::string result;
+  int trailing_newlines = 0;
+  bool prev_more_indented = false;
 
   while (pos < size)
   {
@@ -10842,7 +11262,7 @@ inline Error Tokenizer::yamlParseMultilineScalarEx(const char *data, size_t size
     size_t save_pos = pos;
     size_t next_pos = yamlReadLine(data, size, pos, &line_start, &line_len);
 
-    // Check if blank line
+    // Check if blank line (only whitespace)
     bool is_blank = true;
     for (size_t i = 0; i < line_len; i++)
     {
@@ -10853,19 +11273,49 @@ inline Error Tokenizer::yamlParseMultilineScalarEx(const char *data, size_t size
       }
     }
 
+    // A whitespace-only line that extends beyond block_indent has content (whitespace content)
+    if (is_blank && block_indent >= 0)
+    {
+      size_t stripped = line_len;
+      while (stripped > 0 && line_start[stripped - 1] == '\r')
+        stripped--;
+      if ((int)stripped > block_indent)
+        is_blank = false;
+    }
+
     if (is_blank)
     {
-      if (block_indent >= 0)
-      {
-        result += '\n';
-      }
+      trailing_newlines++;
       pos = next_pos;
       continue;
     }
 
     int indent = (int)yamlMeasureIndent(line_start, line_len);
+
+    // Check for document markers at column 0
+    if (line_len >= 3)
+    {
+      if ((line_start[0] == '-' && line_start[1] == '-' && line_start[2] == '-') ||
+          (line_start[0] == '.' && line_start[1] == '.' && line_start[2] == '.'))
+      {
+        if (line_len == 3 || line_start[3] == ' ' || line_start[3] == '\t' || line_start[3] == '\r')
+        {
+          pos = save_pos;
+          break;
+        }
+      }
+    }
+
     if (block_indent < 0)
+    {
+      // Auto-detect: content must be deeper than context
+      if (indent <= context_indent)
+      {
+        pos = save_pos;
+        break;
+      }
       block_indent = indent;
+    }
 
     if (indent < block_indent)
     {
@@ -10882,44 +11332,82 @@ inline Error Tokenizer::yamlParseMultilineScalarEx(const char *data, size_t size
     while (content_len > 0 && content[content_len - 1] == '\r')
       content_len--;
 
+    bool cur_more_indented = (indent > block_indent);
+
     if (!result.empty())
     {
-      if (indicator == '|')
-        result += '\n';
-      else
+      if (trailing_newlines > 0)
       {
-        // Folded: single newline becomes space, double+ newlines preserved
-        if (result.back() == '\n')
+        // Blank lines: in literal mode or when adjacent to more-indented lines,
+        // the line break before blank lines is preserved (trailing_newlines + 1).
+        // In folded mode between normal lines, the line break is consumed
+        // by the blank line (trailing_newlines only).
+        if (indicator == '|' || prev_more_indented || cur_more_indented)
         {
-          // Already have newline(s) from blank lines, just continue
+          for (int i = 0; i <= trailing_newlines; i++)
+            result += '\n';
         }
         else
         {
-          result += ' ';
+          for (int i = 0; i < trailing_newlines; i++)
+            result += '\n';
         }
+        trailing_newlines = 0;
+      }
+      else if (indicator == '|')
+      {
+        result += '\n';
+      }
+      else
+      {
+        // Folded mode: more-indented lines preserve newlines before/after
+        if (prev_more_indented || cur_more_indented)
+          result += '\n';
+        else
+          result += ' ';
       }
     }
+    else
+    {
+      // Leading blank lines - preserve them
+      if (trailing_newlines > 0)
+      {
+        for (int i = 0; i < trailing_newlines; i++)
+          result += '\n';
+      }
+      trailing_newlines = 0;
+    }
+
+    prev_more_indented = cur_more_indented;
     result.append(content, content_len);
   }
 
   // Apply chomping
-  if (chomp_mode == 1)
+  if (result.empty())
   {
-    // Strip: remove all trailing newlines
-    while (!result.empty() && result.back() == '\n')
-      result.pop_back();
-  }
-  else if (chomp_mode == 2)
-  {
-    // Keep: keep all trailing newlines (add final one)
-    result += '\n';
+    // Empty block scalar
+    if (chomp_mode == 2)
+      result = "\n"; // keep: at least one trailing newline
+    // strip and clip on empty: empty string
   }
   else
   {
-    // Clip (default): remove all trailing newlines, then add exactly one
-    while (!result.empty() && result.back() == '\n')
-      result.pop_back();
-    result += '\n';
+    if (chomp_mode == 1)
+    {
+      // Strip: remove all trailing newlines (trailing_newlines is already not appended)
+    }
+    else if (chomp_mode == 2)
+    {
+      // Keep: keep all trailing newlines (add final one plus any pending)
+      for (int i = 0; i < trailing_newlines; i++)
+        result += '\n';
+      result += '\n';
+    }
+    else
+    {
+      // Clip (default): add exactly one trailing newline
+      result += '\n';
+    }
   }
 
   DataRef ref = yamlOwnedRef(result);
@@ -10944,6 +11432,78 @@ inline void Tokenizer::yamlHandleKeyValue(const char *data, size_t size, size_t 
   {
     DataRef alias_name = yamlOwnedRef(val + 1, val_len - 1);
     yamlEmitProperty(key, key_len, key_type, alias_name.data, alias_name.size, Type::Alias);
+    return;
+  }
+
+  // Check for compact sequence value (e.g., "key: - item1\n  - item2")
+  if (val_len >= 2 && val[0] == '-' && (val[1] == ' ' || val[1] == '\t'))
+  {
+    // Emit property with array container value
+    yamlEmitPropertyWithContainerValue(key, key_len, key_type, Type::ArrayStart);
+    // Compute the actual column of the '-' to match subsequent items at same indent
+    const char *line_start = val;
+    while (line_start > data && line_start[-1] != '\n')
+      line_start--;
+    int dash_indent = (int)(val - line_start);
+    indent_stack.push_back({dash_indent, Type::ArrayStart});
+
+    // Process first item content after "- "
+    const char *item = val + 2;
+    size_t item_len = val_len - 2;
+    while (item_len > 0 && (*item == ' ' || *item == '\t'))
+    {
+      item++;
+      item_len--;
+    }
+    // Strip trailing whitespace
+    while (item_len > 0 && (item[item_len - 1] == ' ' || item[item_len - 1] == '\t'))
+      item_len--;
+
+    if (item_len == 0)
+    {
+      yamlEmitAnonymous(Type::Null, Internal::yaml_null_str, 4);
+    }
+    else
+    {
+      yamlExtractMetadata(item, item_len);
+      // Check for nested sequence
+      if (item_len >= 2 && item[0] == '-' && (item[1] == ' ' || item[1] == '\t'))
+      {
+        // Nested compact sequence within compact sequence
+        int nested_indent = dash_indent + (int)(item - val);
+        yamlEmitAnonymous(Type::ArrayStart, Internal::yaml_arr_start, 1);
+        indent_stack.push_back({nested_indent, Type::ArrayStart});
+        // Process innermost item
+        const char *inner = item + 2;
+        size_t inner_len = item_len - 2;
+        while (inner_len > 0 && (*inner == ' ' || *inner == '\t'))
+        {
+          inner++;
+          inner_len--;
+        }
+        while (inner_len > 0 && (inner[inner_len - 1] == ' ' || inner[inner_len - 1] == '\t'))
+          inner_len--;
+        if (inner_len > 0)
+        {
+          yamlExtractMetadata(inner, inner_len);
+          Type vt = yamlClassifyScalar(inner, inner_len);
+          DataRef vr = yamlNormalizeScalar(inner, inner_len, vt);
+          yamlEmitAnonymous(vt, vr.data, vr.size);
+        }
+        else
+        {
+          yamlEmitAnonymous(Type::Null, Internal::yaml_null_str, 4);
+        }
+      }
+      else
+      {
+        Type vt = yamlClassifyScalar(item, item_len);
+        DataRef vr = yamlNormalizeScalar(item, item_len, vt);
+        yamlEmitAnonymous(vt, vr.data, vr.size);
+      }
+    }
+    // Let yamlParseBlock handle subsequent lines
+    yamlParseBlock(data, size, pos, indent_stack, dash_indent - 1);
     return;
   }
 
@@ -11008,16 +11568,30 @@ inline void Tokenizer::yamlHandleKeyValue(const char *data, size_t size, size_t 
         }
 
         // If peeked content was only metadata (e.g., bare &anchor line), peek further
+        int container_indent = peek_indent;
         if (peek_stripped_len == 0)
         {
-          size_t further_pos = peek_pos;
+          // The peeked line contains only metadata (anchors/tags).
+          // Extract metadata from it now and advance pos past it so yamlParseBlock
+          // won't see it and prematurely close the container.
+          const char *meta_ptr = peek_content;
+          size_t meta_len = peek_content_len;
+          yamlExtractMetadata(meta_ptr, meta_len);
+
+          // Skip past the current peek line first (peek_pos points to its start)
+          const char *tmp_l;
+          size_t tmp_ll;
+          size_t further_pos = yamlReadLine(data, size, peek_pos, &tmp_l, &tmp_ll);
+          pos = further_pos; // Advance pos past the metadata-only line
+
           while (further_pos < size)
           {
             size_t np2 = yamlReadLine(data, size, further_pos, &peek_line, &peek_len);
             if (!yamlIsBlankOrComment(peek_line, peek_len))
             {
-              peek_content = peek_line + yamlMeasureIndent(peek_line, peek_len);
-              peek_content_len = peek_len - yamlMeasureIndent(peek_line, peek_len);
+              peek_indent = (int)yamlMeasureIndent(peek_line, peek_len);
+              peek_content = peek_line + peek_indent;
+              peek_content_len = peek_len - peek_indent;
               while (peek_content_len > 0 && peek_content[peek_content_len - 1] == '\r')
                 peek_content_len--;
               // Re-strip metadata from this further line
@@ -11042,37 +11616,85 @@ inline void Tokenizer::yamlHandleKeyValue(const char *data, size_t size, size_t 
             }
             further_pos = np2;
           }
+          // Use content line's indent for the container
+          container_indent = peek_indent;
         }
 
         if (peek_content_len >= 2 && peek_content[0] == '-' &&
             (peek_content[1] == ' ' || peek_content[1] == '\t'))
         {
           yamlEmitPropertyWithContainerValue(key, key_len, key_type, Type::ArrayStart);
-          indent_stack.push_back({peek_indent, Type::ArrayStart});
+          indent_stack.push_back({container_indent, Type::ArrayStart});
         }
         else if (peek_content_len == 1 && peek_content[0] == '-')
         {
           yamlEmitPropertyWithContainerValue(key, key_len, key_type, Type::ArrayStart);
-          indent_stack.push_back({peek_indent, Type::ArrayStart});
+          indent_stack.push_back({container_indent, Type::ArrayStart});
         }
         else if (peek_stripped_len > 0 && yamlFindColon(peek_stripped, peek_stripped_len) != (size_t)-1)
         {
           yamlEmitPropertyWithContainerValue(key, key_len, key_type, Type::ObjectStart);
-          indent_stack.push_back({peek_indent, Type::ObjectStart});
+          indent_stack.push_back({container_indent, Type::ObjectStart});
+        }
+        else if (peek_stripped_len > 0 && peek_stripped[0] == '?' &&
+                 (peek_stripped_len == 1 || peek_stripped[1] == ' ' || peek_stripped[1] == '\t'))
+        {
+          // Explicit key indicator - this is a mapping
+          yamlEmitPropertyWithContainerValue(key, key_len, key_type, Type::ObjectStart);
+          indent_stack.push_back({container_indent, Type::ObjectStart});
         }
         else if (peek_stripped_len > 0 && (peek_stripped[0] == '{' || peek_stripped[0] == '['))
         {
           // Flow collection follows
           yamlEmitPropertyWithContainerValue(key, key_len, key_type,
             peek_stripped[0] == '{' ? Type::ObjectStart : Type::ArrayStart);
-          indent_stack.push_back({peek_indent,
+          indent_stack.push_back({container_indent,
             peek_stripped[0] == '{' ? Type::ObjectStart : Type::ArrayStart});
         }
         else if (peek_stripped_len > 0 && peek_stripped[0] == '-' &&
                  (peek_stripped_len == 1 || peek_stripped[1] == ' ' || peek_stripped[1] == '\t'))
         {
           yamlEmitPropertyWithContainerValue(key, key_len, key_type, Type::ArrayStart);
-          indent_stack.push_back({peek_indent, Type::ArrayStart});
+          indent_stack.push_back({container_indent, Type::ArrayStart});
+        }
+        else if (peek_stripped_len > 0 && (peek_stripped[0] == '|' || peek_stripped[0] == '>'))
+        {
+          // Block scalar indicator after metadata on separate line(s)
+          char indicator;
+          int chomp_mode, explicit_indent_val;
+          yamlParseBlockScalarHeader(peek_stripped, peek_stripped_len, &indicator, &chomp_mode, &explicit_indent_val);
+          // Advance pos to after the block scalar header line
+          // (pos may already be past metadata lines from the further-peek above)
+          const char *skip_l;
+          size_t skip_ll;
+          size_t header_end = yamlReadLine(data, size, pos, &skip_l, &skip_ll);
+          // Skip blank/metadata lines to find the header line
+          while (header_end < size)
+          {
+            if (!yamlIsBlankOrComment(skip_l, skip_ll))
+            {
+              size_t si = yamlMeasureIndent(skip_l, skip_ll);
+              const char *sc = skip_l + si;
+              size_t scl = skip_ll - si;
+              // Strip metadata
+              yamlExtractMetadata(sc, scl);
+              if (scl > 0 && (sc[0] == '|' || sc[0] == '>'))
+              {
+                pos = header_end; // Advance past the header line
+                break;
+              }
+            }
+            header_end = yamlReadLine(data, size, header_end, &skip_l, &skip_ll);
+          }
+          size_t save_tokens = yaml_tokens_.size();
+          yamlParseMultilineScalarEx(data, size, pos, indicator, chomp_mode, explicit_indent_val, content_indent);
+          if (yaml_tokens_.size() > save_tokens)
+          {
+            Token &last = yaml_tokens_.back();
+            last.name = DataRef(key, key_len);
+            last.name_type = key_type;
+          }
+          return;
         }
         else
         {
@@ -11134,7 +11756,7 @@ inline void Tokenizer::yamlHandleKeyValue(const char *data, size_t size, size_t 
     yamlParseBlockScalarHeader(val, val_len, &indicator, &chomp_mode, &explicit_indent);
     // Emit as named property after parsing the multiline content
     size_t save_tokens = yaml_tokens_.size();
-    yamlParseMultilineScalarEx(data, size, pos, indicator, chomp_mode, explicit_indent);
+    yamlParseMultilineScalarEx(data, size, pos, indicator, chomp_mode, explicit_indent, content_indent);
     // The multiline parser emitted an anonymous token, convert it to a named property
     if (yaml_tokens_.size() > save_tokens)
     {
@@ -11145,10 +11767,50 @@ inline void Tokenizer::yamlHandleKeyValue(const char *data, size_t size, size_t 
   }
   else
   {
-    // Inline scalar value
-    Type val_type = yamlClassifyScalar(val, val_len);
-    DataRef val_ref = yamlNormalizeScalar(val, val_len, val_type);
-    yamlEmitProperty(key, key_len, key_type, val_ref.data, val_ref.size, val_type);
+    // Inline scalar value - check for multiline plain scalar continuation
+    bool is_quoted = (val_len >= 2 && ((val[0] == '"' && val[val_len - 1] == '"') ||
+                                        (val[0] == '\'' && val[val_len - 1] == '\'')));
+    bool is_unclosed_quote = (!is_quoted && val_len >= 1 && (val[0] == '"' || val[0] == '\''));
+    if (is_unclosed_quote)
+    {
+      // Multi-line quoted string - find the closing quote across lines
+      size_t quote_start = (size_t)(val - data);
+      size_t quote_end = yamlFindQuoteEnd(data, size, quote_start);
+      if (quote_end != (size_t)-1)
+      {
+        const char *full_str = data + quote_start;
+        size_t full_len = quote_end - quote_start;
+        DataRef val_ref = yamlNormalizeScalar(full_str, full_len, Type::String);
+        yamlEmitProperty(key, key_len, key_type, val_ref.data, val_ref.size, Type::String);
+        pos = quote_end;
+        // Skip to end of line
+        while (pos < size && data[pos] != '\n')
+          pos++;
+        if (pos < size)
+          pos++;
+      }
+      else
+      {
+        Type val_type = yamlClassifyScalar(val, val_len);
+        DataRef val_ref = yamlNormalizeScalar(val, val_len, val_type);
+        yamlEmitProperty(key, key_len, key_type, val_ref.data, val_ref.size, val_type);
+      }
+    }
+    else if (!is_quoted && val_len > 0 && val[0] != '*')
+    {
+      // Plain scalar - try to accumulate multiline continuation
+      std::string accumulated = yamlAccumulateMultilinePlainScalar(val, val_len, data, size, pos, content_indent);
+      DataRef owned = yamlOwnedRef(accumulated);
+      Type val_type = yamlClassifyScalar(owned.data, owned.size);
+      DataRef val_ref = yamlNormalizeScalar(owned.data, owned.size, val_type);
+      yamlEmitProperty(key, key_len, key_type, val_ref.data, val_ref.size, val_type);
+    }
+    else
+    {
+      Type val_type = yamlClassifyScalar(val, val_len);
+      DataRef val_ref = yamlNormalizeScalar(val, val_len, val_type);
+      yamlEmitProperty(key, key_len, key_type, val_ref.data, val_ref.size, val_type);
+    }
   }
 }
 
@@ -11348,7 +12010,7 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
         char indicator;
         int chomp_mode, explicit_indent;
         yamlParseBlockScalarHeader(item_content, item_content_len, &indicator, &chomp_mode, &explicit_indent);
-        yamlParseMultilineScalarEx(data, size, pos, indicator, chomp_mode, explicit_indent);
+        yamlParseMultilineScalarEx(data, size, pos, indicator, chomp_mode, explicit_indent, indent);
       }
       else if ((item_content_len >= 2 && item_content[0] == '-' &&
                 (item_content[1] == ' ' || item_content[1] == '\t')) ||
@@ -11493,9 +12155,23 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
         else
         {
           // Simple scalar as sequence item (metadata already extracted above)
-          Type vt = yamlClassifyScalar(item_content, item_content_len);
-          DataRef vr = yamlNormalizeScalar(item_content, item_content_len, vt);
-          yamlEmitAnonymous(vt, vr.data, vr.size);
+          // Try multiline plain scalar accumulation
+          bool is_quoted = (item_content_len >= 2 && ((item_content[0] == '"' && item_content[item_content_len - 1] == '"') ||
+                                                       (item_content[0] == '\'' && item_content[item_content_len - 1] == '\'')));
+          if (!is_quoted && item_content_len > 0 && item_content[0] != '*')
+          {
+            std::string accumulated = yamlAccumulateMultilinePlainScalar(item_content, item_content_len, data, size, pos, indent);
+            DataRef owned = yamlOwnedRef(accumulated);
+            Type vt = yamlClassifyScalar(owned.data, owned.size);
+            DataRef vr = yamlNormalizeScalar(owned.data, owned.size, vt);
+            yamlEmitAnonymous(vt, vr.data, vr.size);
+          }
+          else
+          {
+            Type vt = yamlClassifyScalar(item_content, item_content_len);
+            DataRef vr = yamlNormalizeScalar(item_content, item_content_len, vt);
+            yamlEmitAnonymous(vt, vr.data, vr.size);
+          }
         }
       }
     }
@@ -11508,7 +12184,9 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
 
       if (meta_len == 0)
       {
-        yamlEmitAnonymous(Type::Null, Internal::yaml_null_str, 4);
+        // Just a tag (and possibly anchor) with no content on this line.
+        // The metadata applies to the next token - continue to next line.
+        continue;
       }
       else if (meta_content[0] == '*')
       {
@@ -11534,6 +12212,10 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
         size_t colon_pos = yamlFindColon(meta_content, meta_len);
         if (colon_pos != (size_t)-1)
         {
+          // Save key-side anchor before container setup may consume it
+          DataRef saved_name_anchor = yaml_pending_anchor_;
+          yaml_pending_anchor_ = DataRef();
+
           if (!indent_stack.empty() && indent_stack.back().indent == indent &&
               indent_stack.back().container_type != Type::ObjectStart)
           {
@@ -11569,6 +12251,9 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
             val_len--;
           }
           yamlHandleKeyValue(data, size, pos, key, key_len, key_type, val, val_len, indent_stack, indent);
+          // Apply key-side anchor to the last emitted property token
+          if (saved_name_anchor.size > 0 && !yaml_tokens_.empty())
+            yaml_tokens_.back().name_anchor = saved_name_anchor;
         }
         else
         {
@@ -11633,6 +12318,10 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
         if (colon_pos != (size_t)-1)
         {
           // Mapping entry with anchor on key line
+          // Save key-side anchor before container setup may consume it
+          DataRef saved_name_anchor = yaml_pending_anchor_;
+          yaml_pending_anchor_ = DataRef();
+
           if (!indent_stack.empty() && indent_stack.back().indent == indent &&
               indent_stack.back().container_type != Type::ObjectStart)
           {
@@ -11668,6 +12357,9 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
             val_len--;
           }
           yamlHandleKeyValue(data, size, pos, key, key_len, key_type, val, val_len, indent_stack, indent);
+          // Apply key-side anchor to the last emitted property token
+          if (saved_name_anchor.size > 0 && !yaml_tokens_.empty())
+            yaml_tokens_.back().name_anchor = saved_name_anchor;
         }
         else
         {
@@ -11760,13 +12452,13 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
         ekey_len = kr.size;
         ekey_type = Type::String;
       }
-      else if (ekey_len > 0 && ekey[0] == '|')
+      else if (ekey_len > 0 && (ekey[0] == '|' || ekey[0] == '>'))
       {
         // Block scalar as key - parse it
         char indicator;
         int chomp_mode, explicit_indent_val;
         yamlParseBlockScalarHeader(ekey, ekey_len, &indicator, &chomp_mode, &explicit_indent_val);
-        yamlParseMultilineScalarEx(data, size, pos, indicator, chomp_mode, explicit_indent_val);
+        yamlParseMultilineScalarEx(data, size, pos, indicator, chomp_mode, explicit_indent_val, indent);
         // The scalar was emitted as an anonymous token - retrieve it and use as key
         if (!yaml_tokens_.empty())
         {
@@ -11776,6 +12468,14 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
           ekey_type = last.value_type;
           yaml_tokens_.pop_back();
         }
+      }
+      else if (ekey_len > 0)
+      {
+        // Try multiline plain scalar accumulation for the key
+        std::string accumulated = yamlAccumulateMultilinePlainScalar(ekey, ekey_len, data, size, pos, indent);
+        DataRef owned = yamlOwnedRef(accumulated);
+        ekey = owned.data;
+        ekey_len = owned.size;
       }
 
       // Peek ahead for ": value" line
@@ -11826,6 +12526,14 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
       // Bare ": value" - value for a pending explicit key (shouldn't normally reach here since
       // it's consumed in the ? handler above, but handle gracefully)
       // Just skip it - if we get here something is off
+    }
+    else if (content_len >= 1 && (content[0] == '|' || content[0] == '>'))
+    {
+      // Block scalar indicator at block level
+      char indicator;
+      int chomp_mode, explicit_indent;
+      yamlParseBlockScalarHeader(content, content_len, &indicator, &chomp_mode, &explicit_indent);
+      yamlParseMultilineScalarEx(data, size, pos, indicator, chomp_mode, explicit_indent, indent);
     }
     else
     {
@@ -11894,9 +12602,50 @@ inline Error Tokenizer::yamlParseBlock(const char *data, size_t size, size_t &po
         }
         else
         {
-          Type vt = yamlClassifyScalar(sc, sc_len);
-          DataRef vr = yamlNormalizeScalar(sc, sc_len, vt);
-          yamlEmitAnonymous(vt, vr.data, vr.size);
+          // Try multiline plain scalar accumulation for bare document scalars
+          bool is_quoted = (sc_len >= 2 && ((sc[0] == '"' && sc[sc_len - 1] == '"') ||
+                                             (sc[0] == '\'' && sc[sc_len - 1] == '\'')));
+          bool is_unclosed_quote = (!is_quoted && sc_len >= 1 && (sc[0] == '"' || sc[0] == '\''));
+          if (is_unclosed_quote)
+          {
+            size_t quote_start = (size_t)(sc - data);
+            size_t quote_end = yamlFindQuoteEnd(data, size, quote_start);
+            if (quote_end != (size_t)-1)
+            {
+              const char *full_str = data + quote_start;
+              size_t full_len = quote_end - quote_start;
+              DataRef vr = yamlNormalizeScalar(full_str, full_len, Type::String);
+              yamlEmitAnonymous(Type::String, vr.data, vr.size);
+              pos = quote_end;
+              while (pos < size && data[pos] != '\n')
+                pos++;
+              if (pos < size)
+                pos++;
+            }
+            else
+            {
+              Type first_type = yamlClassifyScalar(sc, sc_len);
+              DataRef vr = yamlNormalizeScalar(sc, sc_len, first_type);
+              yamlEmitAnonymous(first_type, vr.data, vr.size);
+            }
+          }
+          else
+          {
+            Type first_type = yamlClassifyScalar(sc, sc_len);
+            if (!is_quoted && sc_len > 0 && first_type == Type::Ascii)
+            {
+              std::string accumulated = yamlAccumulateMultilinePlainScalar(sc, sc_len, data, size, pos, parent_indent);
+              DataRef owned = yamlOwnedRef(accumulated);
+              Type vt = yamlClassifyScalar(owned.data, owned.size);
+              DataRef vr = yamlNormalizeScalar(owned.data, owned.size, vt);
+              yamlEmitAnonymous(vt, vr.data, vr.size);
+            }
+            else
+            {
+              DataRef vr = yamlNormalizeScalar(sc, sc_len, first_type);
+              yamlEmitAnonymous(first_type, vr.data, vr.size);
+            }
+          }
         }
       }
     }
@@ -11918,20 +12667,22 @@ inline Error Tokenizer::yamlParseData(const char *data, size_t size)
       (unsigned char)data[2] == 0xBF)
     pos = 3;
 
-  // Skip leading whitespace, blank lines, and comments
+  // Skip leading blank lines and comment lines (but preserve indentation of first content line)
   while (pos < size)
   {
-    while (pos < size && (data[pos] == ' ' || data[pos] == '\t' || data[pos] == '\r' || data[pos] == '\n'))
-      pos++;
-    if (pos < size && data[pos] == '#')
+    size_t save = pos;
+    const char *ls;
+    size_t ll;
+    size_t np = yamlReadLine(data, size, pos, &ls, &ll);
+    if (yamlIsBlankOrComment(ls, ll))
     {
-      while (pos < size && data[pos] != '\n')
-        pos++;
-      if (pos < size)
-        pos++;
-      continue;
+      pos = np;
     }
-    break;
+    else
+    {
+      pos = save;
+      break;
+    }
   }
 
   // Skip directives (%YAML, %TAG) and interspersed comments/whitespace
@@ -11941,8 +12692,21 @@ inline Error Tokenizer::yamlParseData(const char *data, size_t size)
       pos++;
     if (pos < size)
       pos++;
-    while (pos < size && (data[pos] == ' ' || data[pos] == '\t' || data[pos] == '\r' || data[pos] == '\n'))
-      pos++;
+    // Skip blank lines after directive
+    while (pos < size)
+    {
+      size_t save = pos;
+      const char *ls;
+      size_t ll;
+      size_t np = yamlReadLine(data, size, pos, &ls, &ll);
+      if (yamlIsBlankOrComment(ls, ll))
+        pos = np;
+      else
+      {
+        pos = save;
+        break;
+      }
+    }
   }
 
   // Skip document end marker "..." at start
@@ -12014,7 +12778,7 @@ inline Error Tokenizer::yamlParseData(const char *data, size_t size)
       pos = line_end;
       if (pos < size)
         pos++; // skip \n
-      yamlParseMultilineScalarEx(data, size, pos, indicator, chomp_mode, explicit_indent);
+      yamlParseMultilineScalarEx(data, size, pos, indicator, chomp_mode, explicit_indent, -1);
     }
     else if (content_len > 0 && content_start[0] == '{')
     {
@@ -12025,6 +12789,32 @@ inline Error Tokenizer::yamlParseData(const char *data, size_t size)
     {
       size_t flow_pos = (size_t)(content_start - data);
       yamlParseFlowArray(data, size, flow_pos);
+    }
+    else if (content_len > 0 && (content_start[0] == '"' || content_start[0] == '\''))
+    {
+      // Multi-line quoted string - find end across lines
+      size_t quote_start = (size_t)(content_start - data);
+      size_t quote_end = yamlFindQuoteEnd(data, size, quote_start);
+      if (quote_end != (size_t)-1)
+      {
+        const char *full_str = data + quote_start;
+        size_t full_len = quote_end - quote_start;
+        Type vt = Type::String;
+        DataRef vr = yamlNormalizeScalar(full_str, full_len, vt);
+        yamlEmitAnonymous(vt, vr.data, vr.size);
+        pos = quote_end;
+        // Skip to end of line
+        while (pos < size && data[pos] != '\n')
+          pos++;
+        if (pos < size)
+          pos++;
+      }
+      else
+      {
+        Type vt = yamlClassifyScalar(content_start, content_len);
+        DataRef vr = yamlNormalizeScalar(content_start, content_len, vt);
+        yamlEmitAnonymous(vt, vr.data, vr.size);
+      }
     }
     else if (content_len > 0)
     {
