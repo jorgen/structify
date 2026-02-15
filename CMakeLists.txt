@@ -69,6 +69,14 @@ SYSTEM
 
 FetchContent_MakeAvailable(catch2)
 
+FetchContent_Declare(
+  yaml_test_suite
+  GIT_REPOSITORY https://github.com/yaml/yaml-test-suite.git
+  GIT_TAG data
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(yaml_test_suite)
+
 ### Tests
 if(JSON_STRUCT_OPT_BUILD_TESTS)
   enable_testing()

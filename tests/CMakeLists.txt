@@ -57,6 +57,8 @@ set(unit_test_sources
                            json-struct-nested.cpp
                            json-struct-map-typehandler.cpp
                            json-tokenizer-invalid-json.cpp
+                           yaml-tokenizer-test.cpp
+                           yaml-struct-test.cpp
                            )
 
 add_executable(unit-tests ${unit_test_sources})
@@ -98,3 +100,23 @@ endif()
 
 #add_executable(unit-tests-experimental json-struct-array-varlength.cpp)
 #target_link_libraries(unit-tests-experimental PRIVATE catch_main)
+
+if ("${CMAKE_CXX_COMPILE_FEATURES}" MATCHES ".*cxx_std_17.*")
+  add_executable(yaml-suite-tests yaml-suite-test.cpp)
+  set_property(TARGET yaml-suite-tests PROPERTY CXX_STANDARD 17)
+  target_compile_features(yaml-suite-tests PUBLIC cxx_std_17)
+  target_include_directories(yaml-suite-tests PRIVATE ${JSON_STRUCT_INCLUDE_DIR})
+  target_compile_definitions(yaml-suite-tests PRIVATE
+    YAML_TEST_SUITE_DIR="${yaml_test_suite_SOURCE_DIR}")
+  if (MSVC)
+    if(MSVC_VERSION GREATER_EQUAL 1920)
+      target_compile_options(yaml-suite-tests PRIVATE /W4 /WX)
+    endif()
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(yaml-suite-tests PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-array-bounds)
+  else()
+    target_compile_options(yaml-suite-tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  endif()
+  target_link_libraries(yaml-suite-tests PUBLIC Catch2::Catch2WithMain)
+  catch_discover_tests(yaml-suite-tests)
+endif()
