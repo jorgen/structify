@@ -2,6 +2,7 @@ function (add_example_executable name)
   add_executable(${name} ${ARGN})
   set_compiler_flags_for_target(${name})
   target_include_directories(${name} PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_include_directories(${name} SYSTEM PRIVATE ${float_tools_SOURCE_DIR}/include)
 endfunction()
 
 add_example_executable(01_simple_struct 01_simple_struct.cpp)

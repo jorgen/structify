@@ -52,12 +52,16 @@ endfunction()
 ### Include
 set(JSON_STRUCT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-### Examples
-if(JSON_STRUCT_OPT_BUILD_EXAMPLES)
-  add_subdirectory(examples)
-endif()
-
 include(FetchContent)
+
+FetchContent_Declare(
+  float_tools
+  GIT_REPOSITORY https://github.com/jorgen/float_tools.git
+  GIT_TAG master
+  GIT_SHALLOW TRUE
+  SOURCE_SUBDIR _no_cmakelists_
+)
+FetchContent_MakeAvailable(float_tools)
 
 FetchContent_Declare(
 catch2
@@ -76,6 +80,11 @@ FetchContent_Declare(
   GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(yaml_test_suite)
+
+### Examples
+if(JSON_STRUCT_OPT_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()
 
 ### Tests
 if(JSON_STRUCT_OPT_BUILD_TESTS)
@@ -110,6 +119,9 @@ target_include_directories(${PROJECT_NAME}
         INTERFACE
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_include_directories(${PROJECT_NAME}
+        SYSTEM INTERFACE
+            $<BUILD_INTERFACE:${float_tools_SOURCE_DIR}/include>)
 
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
 set(CPACK_PACKAGE_DESCRIPTION "${PROJECT_DESCRIPTION}")

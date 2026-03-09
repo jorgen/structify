@@ -1,5 +1,6 @@
 #define JS_STL_UNORDERED_SET
 #include <json_struct/json_struct.h>
+#include <float_tools.h>
 #include "catch2/catch_all.hpp"
 
 namespace JS
@@ -23,8 +24,8 @@ struct TypeHandler<std::unordered_map<int, T>>
 
     while (context.token.value_type != Type::ObjectEnd)
     {
-      auto parse_error = Internal::ft::integer::to_integer(context.token.name.data, context.token.name.size, key, pointer);
-      if (parse_error != Internal::ft::parse_string_error::ok || context.token.name.data == pointer)
+      auto parse_error = ft::integer::to_integer(context.token.name.data, context.token.name.size, key, pointer);
+      if (parse_error != ft::parse_string_error::ok || context.token.name.data == pointer)
         return Error::FailedToParseInt;
 
       T value;
@@ -46,7 +47,7 @@ struct TypeHandler<std::unordered_map<int, T>>
     int digits_truncated;
     for (auto it = from_type.begin(); it != from_type.end(); ++it)
     {
-      int size = Internal::ft::integer::to_buffer(it->first, buf, sizeof(buf), &digits_truncated);
+      int size = ft::integer::to_buffer(it->first, buf, sizeof(buf), &digits_truncated);
       if (size <= 0 || digits_truncated)
         return;
       token.name = DataRef(buf, size);
