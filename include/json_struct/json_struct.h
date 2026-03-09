@@ -27,6 +27,7 @@
 #include "json_struct_core.h"
 #include "json_struct_tokenizer.h"
 #include "json_struct_yaml.h"
+#include "json_struct_cbor.h"
 #include "json_struct_meta.h"
 #include "json_struct_type_handlers.h"
 

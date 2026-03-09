@@ -60,6 +60,8 @@ set(unit_test_sources
                            json-tokenizer-invalid-json.cpp
                            yaml-tokenizer-test.cpp
                            yaml-struct-test.cpp
+                           cbor-tokenizer-test.cpp
+                           cbor-struct-test.cpp
                            )
 
 add_executable(unit-tests ${unit_test_sources})
