@@ -473,7 +473,7 @@ struct ParseContext
 
   Error nextToken()
   {
-    error = tokenizer.nextTokens(&token, 1).second;
+    error = tokenizer.nextTokens(&token, 1).error;
     return error;
   }
 
@@ -1169,7 +1169,7 @@ STFY_NODISCARD inline Error ParseContext::parseTo(T &to_type)
 {
   missing_members.reserve(10);
   unassigned_required_members.reserve(10);
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   if (error != STFY::Error::NoError)
     return error;
   error = TypeHandler<T>::to(to_type, *this);
@@ -2266,7 +2266,7 @@ inline Error TypeHandler<T, Enable>::to(T &to_type, ParseContext &context)
 {
   if (context.token.value_type != STFY::Type::ObjectStart)
     return Error::ExpectedObjectStart;
-  Error error = context.tokenizer.nextTokens(&context.token, 1).second;
+  Error error = context.tokenizer.nextTokens(&context.token, 1).error;
   if (error != STFY::Error::NoError)
     return error;
   auto members = Internal::StructifyBaseDummy<T, T>::stfy_static_meta_data_info();

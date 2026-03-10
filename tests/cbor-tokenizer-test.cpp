@@ -26,7 +26,7 @@ TEST_CASE("cbor_unsigned_int_inline", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "5");
@@ -43,7 +43,7 @@ TEST_CASE("cbor_unsigned_int_zero", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "0");
@@ -61,7 +61,7 @@ TEST_CASE("cbor_unsigned_int_23", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "23");
@@ -79,7 +79,7 @@ TEST_CASE("cbor_unsigned_int_1byte", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "255");
@@ -97,7 +97,7 @@ TEST_CASE("cbor_unsigned_int_2byte", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "256");
@@ -115,7 +115,7 @@ TEST_CASE("cbor_unsigned_int_4byte", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "65536");
@@ -133,7 +133,7 @@ TEST_CASE("cbor_unsigned_int_8byte", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "4294967296");
@@ -153,7 +153,7 @@ TEST_CASE("cbor_negative_int_inline", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "-1");
@@ -171,7 +171,7 @@ TEST_CASE("cbor_negative_int_minus_100", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "-100");
@@ -191,7 +191,7 @@ TEST_CASE("cbor_byte_string_empty", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Ascii);
   REQUIRE(std::string(token.value.data, token.value.size) == ""); // empty base64
@@ -209,7 +209,7 @@ TEST_CASE("cbor_byte_string_4bytes", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Ascii);
   REQUIRE(std::string(token.value.data, token.value.size) == "AQIDBA=="); // base64 of [1,2,3,4]
@@ -229,7 +229,7 @@ TEST_CASE("cbor_text_string_empty", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(std::string(token.value.data, token.value.size) == "");
@@ -247,7 +247,7 @@ TEST_CASE("cbor_text_string_hello", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(std::string(token.value.data, token.value.size) == "hello");
@@ -267,11 +267,11 @@ TEST_CASE("cbor_empty_array", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ArrayStart);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ArrayEnd);
 }
@@ -288,26 +288,26 @@ TEST_CASE("cbor_array_of_ints", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ArrayStart);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "1");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "2");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "3");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ArrayEnd);
 }
@@ -324,21 +324,21 @@ TEST_CASE("cbor_indefinite_array", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ArrayStart);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "1");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "2");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ArrayEnd);
 }
@@ -357,11 +357,11 @@ TEST_CASE("cbor_empty_map", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 }
@@ -379,19 +379,19 @@ TEST_CASE("cbor_simple_map", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::Ascii, "a", STFY::Type::Number, "1") == 0);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::Ascii, "b", STFY::Type::Number, "2") == 0);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 }
@@ -409,15 +409,15 @@ TEST_CASE("cbor_indefinite_map", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::Ascii, "a", STFY::Type::Number, "1") == 0);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 }
@@ -437,7 +437,7 @@ TEST_CASE("cbor_tag_ignored", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   REQUIRE(std::string(token.value.data, token.value.size) == "1363896240");
@@ -454,7 +454,7 @@ TEST_CASE("cbor_false", "[cbor][tokenizer]")
 
   STFY::Token token;
   STFY::Error error;
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Bool);
   REQUIRE(std::string(token.value.data, token.value.size) == "false");
@@ -469,7 +469,7 @@ TEST_CASE("cbor_true", "[cbor][tokenizer]")
 
   STFY::Token token;
   STFY::Error error;
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Bool);
   REQUIRE(std::string(token.value.data, token.value.size) == "true");
@@ -484,7 +484,7 @@ TEST_CASE("cbor_null", "[cbor][tokenizer]")
 
   STFY::Token token;
   STFY::Error error;
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Null);
   REQUIRE(std::string(token.value.data, token.value.size) == "null");
@@ -500,7 +500,7 @@ TEST_CASE("cbor_float16_zero", "[cbor][tokenizer]")
 
   STFY::Token token;
   STFY::Error error;
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   // 0.0 should produce some text representation
@@ -520,7 +520,7 @@ TEST_CASE("cbor_float16_one", "[cbor][tokenizer]")
 
   STFY::Token token;
   STFY::Error error;
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   double val;
@@ -539,7 +539,7 @@ TEST_CASE("cbor_float32", "[cbor][tokenizer]")
 
   STFY::Token token;
   STFY::Error error;
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   double val;
@@ -558,7 +558,7 @@ TEST_CASE("cbor_float64", "[cbor][tokenizer]")
 
   STFY::Token token;
   STFY::Error error;
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
   double val;
@@ -595,36 +595,36 @@ TEST_CASE("cbor_nested_map_with_array", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::Ascii, "name", STFY::Type::String, "John") == 0);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ArrayStart);
   REQUIRE(std::string(token.name.data, token.name.size) == "scores");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(std::string(token.value.data, token.value.size) == "10");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(std::string(token.value.data, token.value.size) == "20");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(std::string(token.value.data, token.value.size) == "30");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ArrayEnd);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 }
@@ -642,7 +642,7 @@ TEST_CASE("cbor_truncated_data", "[cbor][tokenizer]")
 
   STFY::Token token;
   STFY::Error error;
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   // Should get NeedMoreData since no tokens were emitted
   REQUIRE(error == STFY::Error::NeedMoreData);
 }
@@ -655,7 +655,7 @@ TEST_CASE("cbor_empty_data", "[cbor][tokenizer]")
 
   STFY::Token token;
   STFY::Error error;
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NeedMoreData);
 }
 
@@ -674,23 +674,23 @@ TEST_CASE("cbor_integer_key_map", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(std::string(token.name.data, token.name.size) == "1");
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(std::string(token.value.data, token.value.size) == "one");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(std::string(token.name.data, token.name.size) == "2");
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(std::string(token.value.data, token.value.size) == "two");
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 }
@@ -709,7 +709,7 @@ TEST_CASE("cbor_indefinite_text_string", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(std::string(token.value.data, token.value.size) == "hello");
@@ -730,15 +730,15 @@ TEST_CASE("cbor_map_with_string_values", "[cbor][tokenizer]")
   STFY::Token token;
   STFY::Error error;
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::Ascii, "key", STFY::Type::String, "value") == 0);
 
-  error = tokenizer.nextTokens(&token, 1).second;
+  error = tokenizer.nextTokens(&token, 1).error;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 }

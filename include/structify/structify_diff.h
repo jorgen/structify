@@ -148,7 +148,7 @@ struct DiffTokens
         Error e = Error::NoError;
         while (e == Error::NoError)
         {
-            e = tokenizer.nextTokens(&token, 1).second;
+            e = tokenizer.nextTokens(&token, 1).error;
             if (e == Error::NoError)
                 tokens.data.emplace_back(token);
         }

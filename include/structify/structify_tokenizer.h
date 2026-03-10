@@ -848,6 +848,12 @@ inline size_t findAsciiEndAVX2(const char* STRUCTIFY_RESTRICT data, size_t lengt
 
 } // namespace Internal
 
+struct GetTokensResult
+{
+  size_t count;
+  Error error;
+};
+
 class Tokenizer
 {
 public:
@@ -867,7 +873,7 @@ public:
   void resetData(const char *data, size_t size, size_t index);
   void resetData(const std::vector<Token> *parsedData, size_t index);
 
-  std::pair<size_t, Error> nextTokens(Token *tokens, size_t capacity);
+  GetTokensResult nextTokens(Token *tokens, size_t capacity);
   const char *currentPosition() const;
 
   void pushScope(STFY::Type type);
@@ -1240,7 +1246,7 @@ inline void Tokenizer::resetData(const std::vector<Token> *parsedData, size_t in
   resetForNewToken();
 }
 
-inline std::pair<size_t, Error> Tokenizer::nextTokens(Token *tokens, size_t capacity)
+inline GetTokensResult Tokenizer::nextTokens(Token *tokens, size_t capacity)
 {
   size_t count = 0;
   assert(!scope_counter.size() ||
@@ -1348,7 +1354,7 @@ inline STFY::Error Tokenizer::goToEndOfScope(STFY::Token &token)
   STFY::Error error = STFY::Error::NoError;
   while (scope_counter.back().depth && error == STFY::Error::NoError)
   {
-    error = nextTokens(&token, 1).second;
+    error = nextTokens(&token, 1).error;
   }
   return error;
 }
@@ -2287,7 +2293,7 @@ static inline STFY::Error reformat(const char *data, size_t size, std::string &o
 
   while (error == Error::NoError)
   {
-    error = tokenizer.nextTokens(&token, 1).second;
+    error = tokenizer.nextTokens(&token, 1).error;
     if (error != Error::NoError)
       break;
     serializer.write(token);

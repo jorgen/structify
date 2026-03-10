@@ -23,7 +23,7 @@ TEST_CASE("Benchmarks", "[performance]")
     int object_count = 0;
     do
     {
-      error = tokenizer.nextTokens(&token, 1).second;
+      error = tokenizer.nextTokens(&token, 1).error;
       if (token.value_type == STFY::Type::ObjectStart)
       {
         object_count++;
@@ -231,7 +231,7 @@ TEST_CASE("Benchmarks", "[performance]")
     int max_size = 0;
     do
     {
-      error = tokenizer.nextTokens(&token, 1).second;
+      error = tokenizer.nextTokens(&token, 1).error;
       if (token.value_type == STFY::Type::ArrayStart)
       {
         array_size++;
