@@ -674,7 +674,7 @@ struct TypeHandler<JsonArray>
     if (context.token.value_type != STFY::Type::ArrayStart)
       return Error::ExpectedArrayStart;
 
-    context.tokenizer.copyFromValue(context.token, to_type.data);
+    const char *start = context.token.value.data;
 
     size_t level = 1;
     Error error = Error::NoError;
@@ -688,7 +688,7 @@ struct TypeHandler<JsonArray>
     }
 
     if (error == STFY::Error::NoError)
-      context.tokenizer.copyIncludingValue(context.token, to_type.data);
+      to_type.data.assign(start, context.token.value.data + context.token.value.size - start);
 
     return error;
   }
@@ -753,7 +753,7 @@ struct TypeHandler<JsonObject>
     if (context.token.value_type != STFY::Type::ObjectStart)
       return Error::ExpectedObjectStart;
 
-    context.tokenizer.copyFromValue(context.token, to_type.data);
+    const char *start = context.token.value.data;
 
     size_t level = 1;
     Error error = Error::NoError;
@@ -766,7 +766,8 @@ struct TypeHandler<JsonObject>
         level--;
     }
 
-    context.tokenizer.copyIncludingValue(context.token, to_type.data);
+    if (error == STFY::Error::NoError)
+      to_type.data.assign(start, context.token.value.data + context.token.value.size - start);
 
     return error;
   }
@@ -859,7 +860,7 @@ struct TypeHandler<JsonObjectOrArray>
       return Error::ExpectedObjectStart;
     }
 
-    context.tokenizer.copyFromValue(context.token, to_type.data);
+    const char *start = context.token.value.data;
 
     size_t level = 1;
     Error error = Error::NoError;
@@ -872,7 +873,8 @@ struct TypeHandler<JsonObjectOrArray>
         level--;
     }
 
-    context.tokenizer.copyIncludingValue(context.token, to_type.data);
+    if (error == STFY::Error::NoError)
+      to_type.data.assign(start, context.token.value.data + context.token.value.size - start);
 
     return error;
   }

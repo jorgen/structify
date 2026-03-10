@@ -146,9 +146,10 @@ struct DiffTokens
         tokenizer.addData(json, size);
         Token token;
         Error e = Error::NoError;
+        size_t count;
         while (e == Error::NoError)
         {
-            e = tokenizer.nextToken(token);
+            e = tokenizer.nextTokens(&token, 1, count);
             if (e == Error::NoError)
                 tokens.data.emplace_back(token);
         }

@@ -25,304 +25,169 @@
 
 #include "catch2/catch_all.hpp"
 
+#include <string>
+
 namespace json_tokenizer_partial_test
 {
-const char json_data_partial_1_1[] = "{";
-const char json_data_partial_1_2[] = "   \"foo\": \"bar\","
+
+// Test with a complete single buffer (equivalent to the old partial_1 test
+// where the two buffers are concatenated into one contiguous buffer)
+const char json_data_combined_1[] = "{   \"foo\": \"bar\","
                                      "   \"color\": \"red\"\n"
                                      "}";
 
-TEST_CASE("check_json_partial_1", "[tokenizer]")
+TEST_CASE("check_json_single_buffer_1", "[tokenizer]")
 {
   STFY::Error error;
   STFY::Tokenizer tokenizer;
   tokenizer.allowAsciiType(true);
   tokenizer.allowNewLineAsTokenDelimiter(true);
-  tokenizer.addData(json_data_partial_1_1, sizeof(json_data_partial_1_1));
-  tokenizer.addData(json_data_partial_1_2, sizeof(json_data_partial_1_2));
+  tokenizer.addData(json_data_combined_1, sizeof(json_data_combined_1));
 
   STFY::Token token;
-  error = tokenizer.nextToken(token);
+  size_t count;
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::String, "color", STFY::Type::String, "red") == 0));
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NeedMoreData);
 }
 
-const char json_data_partial_2_1[] = "{  \"fo";
-const char json_data_partial_2_2[] = "o\": \"bar\","
-                                     "   \"color\": \"red\"\n"
+// Test with complete buffer containing ascii properties and bool values
+const char json_data_combined_2[] = "{  \"foo\": \"bar\","
+                                     "   color : \"red\"\n"
                                      "}";
 
-TEST_CASE("check_json_partial_2", "[tokenizer]")
+TEST_CASE("check_json_single_buffer_2", "[tokenizer]")
 {
   STFY::Error error;
   STFY::Tokenizer tokenizer;
   tokenizer.allowAsciiType(true);
   tokenizer.allowNewLineAsTokenDelimiter(true);
-  tokenizer.addData(json_data_partial_2_1, sizeof(json_data_partial_2_1));
-  tokenizer.addData(json_data_partial_2_2, sizeof(json_data_partial_2_2));
+  tokenizer.addData(json_data_combined_2, sizeof(json_data_combined_2));
 
   STFY::Token token;
-  error = tokenizer.nextToken(token);
+  size_t count;
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  std::string foo(token.name.data, token.name.size);
-  REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE((assert_token(token, STFY::Type::String, "color", STFY::Type::String, "red") == 0));
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(token.value_type == STFY::Type::ObjectEnd);
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NeedMoreData);
-}
-
-const char json_data_partial_3_1[] = "{  \"foo\"";
-const char json_data_partial_3_2[] = ": \"bar\","
-                                     "   \"color\": \"red\"\n"
-                                     "}";
-
-TEST_CASE("check_json_partial_3", "[tokenizer]")
-{
-  STFY::Error error;
-  STFY::Tokenizer tokenizer;
-  tokenizer.allowAsciiType(true);
-  tokenizer.allowNewLineAsTokenDelimiter(true);
-  tokenizer.addData(json_data_partial_3_1, sizeof(json_data_partial_3_1));
-  tokenizer.addData(json_data_partial_3_2, sizeof(json_data_partial_3_2));
-
-  STFY::Token token;
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(token.value_type == STFY::Type::ObjectStart);
-
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE((assert_token(token, STFY::Type::String, "color", STFY::Type::String, "red") == 0));
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(token.value_type == STFY::Type::ObjectEnd);
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NeedMoreData);
-}
-
-const char json_data_partial_4_1[] = "{  \"foo\": \"bar\"";
-const char json_data_partial_4_2[] = ","
-                                     "   \"color\": \"red\"\n"
-                                     "}";
-
-TEST_CASE("check_json_partial_4", "[tokenizer]")
-{
-  STFY::Error error;
-  STFY::Tokenizer tokenizer;
-  tokenizer.allowAsciiType(true);
-  tokenizer.allowNewLineAsTokenDelimiter(true);
-  tokenizer.addData(json_data_partial_4_1, sizeof(json_data_partial_4_1));
-  tokenizer.addData(json_data_partial_4_2, sizeof(json_data_partial_4_2));
-
-  STFY::Token token;
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(token.value_type == STFY::Type::ObjectStart);
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE((assert_token(token, STFY::Type::String, "color", STFY::Type::String, "red") == 0));
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(token.value_type == STFY::Type::ObjectEnd);
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NeedMoreData);
-}
-
-const char json_data_partial_5_1[] = "{  \"foo\": \"bar\","
-                                     "   col";
-const char json_data_partial_5_2[] = "or : \"red\"\n"
-                                     "}";
-
-TEST_CASE("check_json_partial_5", "[tokenizer]")
-{
-  STFY::Error error;
-  STFY::Tokenizer tokenizer;
-  tokenizer.allowAsciiType(true);
-  tokenizer.allowNewLineAsTokenDelimiter(true);
-  tokenizer.addData(json_data_partial_5_1, sizeof(json_data_partial_5_1));
-  tokenizer.addData(json_data_partial_5_2, sizeof(json_data_partial_5_2));
-
-  STFY::Token token;
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(token.value_type == STFY::Type::ObjectStart);
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
-
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "color", STFY::Type::String, "red") == 0));
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NeedMoreData);
 }
 
-const char json_data_partial_6_1[] = "{  \"foo\": \"bar\","
-                                     "   color : tr";
-const char json_data_partial_6_2[] = "ue"
+// Test with complete buffer containing bool value
+const char json_data_combined_3[] = "{  \"foo\": \"bar\","
+                                     "   color : true"
                                      "}";
 
-TEST_CASE("check_json_partial_6", "[tokenizer]")
+TEST_CASE("check_json_single_buffer_3", "[tokenizer]")
 {
   STFY::Error error;
   STFY::Tokenizer tokenizer;
   tokenizer.allowAsciiType(true);
   tokenizer.allowNewLineAsTokenDelimiter(true);
-  tokenizer.addData(json_data_partial_6_1, sizeof(json_data_partial_6_1));
-  tokenizer.addData(json_data_partial_6_2, sizeof(json_data_partial_6_2));
+  tokenizer.addData(json_data_combined_3, sizeof(json_data_combined_3));
 
   STFY::Token token;
-  error = tokenizer.nextToken(token);
+  size_t count;
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "color", STFY::Type::Bool, "true") == 0));
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NeedMoreData);
 }
 
-const char json_data_partial_7_1[] = "{  \"foo\": \"bar\","
-                                     "   color : true";
-const char json_data_partial_7_2[] = "}";
-
-TEST_CASE("check_json_partial_7", "[tokenizer]")
-{
-  STFY::Error error;
-  STFY::Tokenizer tokenizer;
-  tokenizer.allowAsciiType(true);
-  tokenizer.allowNewLineAsTokenDelimiter(true);
-  tokenizer.addData(json_data_partial_7_1, sizeof(json_data_partial_7_1));
-  tokenizer.addData(json_data_partial_7_2, sizeof(json_data_partial_7_2));
-
-  STFY::Token token;
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(token.value_type == STFY::Type::ObjectStart);
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE((assert_token(token, STFY::Type::Ascii, "color", STFY::Type::Bool, "true") == 0));
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NoError);
-  REQUIRE(token.value_type == STFY::Type::ObjectEnd);
-
-  error = tokenizer.nextToken(token);
-  REQUIRE(error == STFY::Error::NeedMoreData);
-}
-
-const char json_data_partial_8_1[] = "{  \"foo\": \"bar\","
+// Test with complete buffer containing an array
+const char json_data_combined_4[] = "{  \"foo\": \"bar\","
                                      "  \"array\": ["
                                      "    \"one\","
-                                     "    \"two\",";
-const char json_data_partial_8_2[] = "    \"three\""
+                                     "    \"two\","
+                                     "    \"three\""
                                      "  ]"
                                      "}";
 
-TEST_CASE("check_json_partial_8", "[tokenizer]")
+TEST_CASE("check_json_single_buffer_4", "[tokenizer]")
 {
   STFY::Error error;
   STFY::Tokenizer tokenizer;
   tokenizer.allowAsciiType(true);
   tokenizer.allowNewLineAsTokenDelimiter(true);
-  tokenizer.addData(json_data_partial_8_1, sizeof(json_data_partial_8_1));
-  tokenizer.addData(json_data_partial_8_2, sizeof(json_data_partial_8_2));
+  tokenizer.addData(json_data_combined_4, sizeof(json_data_combined_4));
 
   STFY::Token token;
-  error = tokenizer.nextToken(token);
+  size_t count;
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::String, "array", STFY::Type::ArrayStart, "[") == 0));
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "", STFY::Type::String, "one") == 0));
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "", STFY::Type::String, "two") == 0));
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "", STFY::Type::String, "three") == 0));
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "", STFY::Type::ArrayEnd, "]") == 0));
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 
-  error = tokenizer.nextToken(token);
+  error = tokenizer.nextTokens(&token, 1, count);
   REQUIRE(error == STFY::Error::NeedMoreData);
 }
 

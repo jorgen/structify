@@ -5,36 +5,6 @@ namespace STFY
 {
 namespace Internal
 {
-struct IntermediateToken
-{
-  IntermediateToken()
-    : active(false)
-    , name_type_set(false)
-    , data_type_set(false)
-  {
-  }
-
-  void clear()
-  {
-    if (!active)
-      return;
-    active = false;
-    name_type_set = false;
-    data_type_set = false;
-    name_type = Type::Error;
-    data_type = Type::Error;
-    name.clear();
-    data.clear();
-  }
-
-  bool active : 1;
-  bool name_type_set : 1;
-  bool data_type_set : 1;
-  Type name_type = Type::Error;
-  Type data_type = Type::Error;
-  std::string name;
-  std::string data;
-};
 enum Lookup
 {
   StrEndOrBackSlash = 1,
@@ -896,15 +866,9 @@ public:
   void addData(const std::vector<Token> *parsedData);
   void resetData(const char *data, size_t size, size_t index);
   void resetData(const std::vector<Token> *parsedData, size_t index);
-  size_t registeredBuffers() const;
 
-  void setNeedMoreDataCallback(std::function<void(Tokenizer &)> callback);
-  void setReleaseCallback(std::function<void(const char *)> &callback);
-  Error nextToken(Token &next_token);
+  Error nextTokens(Token *tokens, size_t capacity, size_t &count);
   const char *currentPosition() const;
-
-  void copyFromValue(const Token &token, std::string &to_buffer);
-  void copyIncludingValue(const Token &token, std::string &to_buffer);
 
   void pushScope(STFY::Type type);
   void popScope();
@@ -943,8 +907,6 @@ private:
   Error findDelimiter(const DataRef &json_data, size_t *chars_ahead);
   Error findTokenEnd(const DataRef &json_data, size_t *chars_ahead);
   Error skipComment(const DataRef &json_data, size_t *chars_ahead);
-  void requestMoreData();
-  void releaseFirstDataRef();
   Error populateFromDataRef(DataRef &data, Type &type, const DataRef &json_data);
   static void populate_anonymous_token(const DataRef &data, Type type, Token &token);
   Error populateNextTokenFromDataRef(Token &next_token, const DataRef &json_data);
@@ -960,19 +922,14 @@ private:
   bool allow_yaml : 1;
   bool allow_cbor : 1;
   bool expecting_prop_or_anonymous_data : 1;
-  bool continue_after_need_more_data : 1;
   size_t cursor_index;
   size_t current_data_start;
   size_t line_context;
   size_t line_range_context;
   size_t range_context;
-  Internal::IntermediateToken intermediate_token;
-  std::vector<DataRef> data_list;
+  DataRef data_;
   std::vector<Internal::ScopeCounter> scope_counter;
   std::vector<Type> container_stack;
-  std::function<void(const char *)> release_callback;
-  std::function<void(Tokenizer &)> need_more_data_callback;
-  std::vector<std::pair<size_t, std::string *>> copy_buffers;
   const std::vector<Token> *parsed_data_vector;
   Internal::ErrorContext error_context;
 
@@ -1202,7 +1159,6 @@ inline Tokenizer::Tokenizer()
   , allow_yaml(false)
   , allow_cbor(false)
   , expecting_prop_or_anonymous_data(false)
-  , continue_after_need_more_data(false)
   , cursor_index(0)
   , current_data_start(0)
   , line_context(4)
@@ -1210,11 +1166,7 @@ inline Tokenizer::Tokenizer()
   , range_context(38)
   , parsed_data_vector(nullptr)
 {
-  // Reserve capacity based on typical JSON nesting depth
-  // Most JSON has < 8 levels of nesting, but we reserve for 32 to avoid reallocation
   container_stack.reserve(32);
-  data_list.reserve(4);
-  copy_buffers.reserve(8);
   scope_counter.reserve(32);
 }
 
@@ -1255,13 +1207,13 @@ inline void Tokenizer::addData(const char *data, size_t data_size)
     cborParseData(data, data_size);
     return;
   }
-  data_list.push_back(DataRef(data, data_size));
+  data_ = DataRef(data, data_size);
 }
 
 template <size_t N>
 inline void Tokenizer::addData(const char (&data)[N])
 {
-  data_list.push_back(DataRef(data));
+  data_ = DataRef(data, N - 1);
 }
 
 inline void Tokenizer::addData(const std::vector<Token> *parsedData)
@@ -1273,13 +1225,7 @@ inline void Tokenizer::addData(const std::vector<Token> *parsedData)
 
 inline void Tokenizer::resetData(const char *data, size_t size, size_t index)
 {
-
-  if (release_callback)
-  {
-    for (auto &data_buffer : data_list)
-      release_callback(data_buffer.data);
-  }
-  data_list.clear();
+  data_ = DataRef();
   parsed_data_vector = nullptr;
   cursor_index = index;
   addData(data, size);
@@ -1288,87 +1234,62 @@ inline void Tokenizer::resetData(const char *data, size_t size, size_t index)
 
 inline void Tokenizer::resetData(const std::vector<Token> *parsedData, size_t index)
 {
-  if (release_callback)
-  {
-    for (auto &data_buffer : data_list)
-      release_callback(data_buffer.data);
-  }
-  data_list.clear();
+  data_ = DataRef();
   parsed_data_vector = parsedData;
   cursor_index = index;
   resetForNewToken();
 }
 
-inline size_t Tokenizer::registeredBuffers() const
+inline Error Tokenizer::nextTokens(Token *tokens, size_t capacity, size_t &count)
 {
-  return data_list.size();
-}
-
-inline void Tokenizer::setNeedMoreDataCallback(std::function<void(Tokenizer &)> callback)
-{
-  need_more_data_callback = callback;
-}
-
-inline void Tokenizer::setReleaseCallback(std::function<void(const char *)> &callback)
-{
-  release_callback = callback;
-}
-
-inline Error Tokenizer::nextToken(Token &next_token)
-{
+  count = 0;
   assert(!scope_counter.size() ||
          (scope_counter.back().type != STFY::Type::ArrayEnd && scope_counter.back().type != STFY::Type::ObjectEnd));
-  if (scope_counter.size() && scope_counter.back().depth == 0)
+
+  while (count < capacity)
   {
-    return Error::ScopeHasEnded;
-  }
-  if (parsed_data_vector)
-  {
-    next_token = (*parsed_data_vector)[cursor_index];
-    cursor_index++;
-    if (cursor_index == parsed_data_vector->size())
+    if (scope_counter.size() && scope_counter.back().depth == 0)
     {
-      cursor_index = 0;
-      parsed_data_vector = nullptr;
+      return count > 0 ? Error::NoError : Error::ScopeHasEnded;
     }
-    if (scope_counter.size())
-      scope_counter.back().handleType(next_token.value_type);
-    return Error::NoError;
-  }
-  if (STRUCTIFY_UNLIKELY(data_list.empty()))
-  {
-    requestMoreData();
-  }
+    if (parsed_data_vector)
+    {
+      Token &next_token = tokens[count];
+      next_token = (*parsed_data_vector)[cursor_index];
+      cursor_index++;
+      if (cursor_index == parsed_data_vector->size())
+      {
+        cursor_index = 0;
+        parsed_data_vector = nullptr;
+      }
+      if (scope_counter.size())
+        scope_counter.back().handleType(next_token.value_type);
+      count++;
+      continue;
+    }
 
-  error_context.clear();
+    if (STRUCTIFY_UNLIKELY(data_.size == 0))
+    {
+      return count > 0 ? Error::NoError : Error::NeedMoreData;
+    }
 
-  if (STRUCTIFY_UNLIKELY(data_list.empty()))
-  {
-    return Error::NeedMoreData;
-  }
-
-  if (STRUCTIFY_LIKELY(!continue_after_need_more_data))
+    error_context.clear();
     resetForNewToken();
 
-  Error error = Error::NeedMoreData;
-  while (STRUCTIFY_LIKELY(error == Error::NeedMoreData && data_list.size()))
-  {
-    const DataRef &json_data = data_list.front();
-    error = populateNextTokenFromDataRef(next_token, json_data);
-
-    if (STRUCTIFY_UNLIKELY(error != Error::NoError && error != Error::NeedMoreData))
-      updateErrorContext(error);
+    Token &next_token = tokens[count];
+    Error error = populateNextTokenFromDataRef(next_token, data_);
 
     if (STRUCTIFY_UNLIKELY(error == Error::NeedMoreData))
     {
-      releaseFirstDataRef();
-      requestMoreData();
+      return count > 0 ? Error::NoError : Error::NeedMoreData;
     }
-  }
 
-  continue_after_need_more_data = error == Error::NeedMoreData;
-  if (STRUCTIFY_LIKELY(error == STFY::Error::NoError))
-  {
+    if (STRUCTIFY_UNLIKELY(error != Error::NoError))
+    {
+      updateErrorContext(error);
+      return error;
+    }
+
     if (next_token.value_type == Type::ArrayStart || next_token.value_type == Type::ObjectStart)
       container_stack.push_back(next_token.value_type);
     if (STRUCTIFY_UNLIKELY(next_token.value_type == Type::ArrayEnd))
@@ -1393,8 +1314,9 @@ inline Error Tokenizer::nextToken(Token &next_token)
     }
     if (STRUCTIFY_LIKELY(scope_counter.size()))
       scope_counter.back().handleType(next_token.value_type);
+    count++;
   }
-  return error;
+  return Error::NoError;
 }
 
 inline const char *Tokenizer::currentPosition() const
@@ -1402,47 +1324,10 @@ inline const char *Tokenizer::currentPosition() const
   if (parsed_data_vector)
     return reinterpret_cast<const char *>(cursor_index);
 
-  if (data_list.empty())
+  if (data_.size == 0)
     return nullptr;
 
-  return data_list.front().data + cursor_index;
-}
-
-static bool isValueInIntermediateToken(const Token &token, const Internal::IntermediateToken &intermediate)
-{
-  if (intermediate.data.size())
-    return token.value.data >= &intermediate.data[0] &&
-           token.value.data < &intermediate.data[0] + intermediate.data.size();
-  return false;
-}
-
-inline void Tokenizer::copyFromValue(const Token &token, std::string &to_buffer)
-{
-  if (STRUCTIFY_UNLIKELY(isValueInIntermediateToken(token, intermediate_token)))
-  {
-    to_buffer.reserve(to_buffer.size() + token.value.size);
-    to_buffer.append(token.value.data, token.value.size);
-    copy_buffers.emplace_back(cursor_index, &to_buffer);
-  }
-  else
-  {
-    assert(token.value.data >= data_list.front().data &&
-           token.value.data < data_list.front().data + data_list.front().size);
-    ptrdiff_t index = token.value.data - data_list.front().data;
-    copy_buffers.emplace_back(index, &to_buffer);
-  }
-}
-
-inline void Tokenizer::copyIncludingValue(const Token &, std::string &to_buffer)
-{
-  auto it =
-    std::find_if(copy_buffers.begin(), copy_buffers.end(),
-                 [&to_buffer](const std::pair<size_t, std::string *> &pair) { return &to_buffer == pair.second; });
-  assert(it != copy_buffers.end());
-  assert(it->first <= cursor_index);
-  if (cursor_index - it->first != 0)
-    to_buffer.append(data_list.front().data + it->first, cursor_index - it->first);
-  copy_buffers.erase(it);
+  return data_.data + cursor_index;
 }
 
 inline void Tokenizer::pushScope(STFY::Type type)
@@ -1461,9 +1346,10 @@ inline void Tokenizer::popScope()
 inline STFY::Error Tokenizer::goToEndOfScope(STFY::Token &token)
 {
   STFY::Error error = STFY::Error::NoError;
+  size_t count;
   while (scope_counter.back().depth && error == STFY::Error::NoError)
   {
-    error = nextToken(token);
+    error = nextTokens(&token, 1, count);
   }
   return error;
 }
@@ -1504,8 +1390,9 @@ inline void Tokenizer::setErrorContextConfig(size_t lineContext, size_t rangeCon
 
 STRUCTIFY_FORCE_INLINE void Tokenizer::resetForNewToken()
 {
-  intermediate_token.clear();
-  resetForNewValue();
+  property_state = InPropertyState::NoStartFound;
+  property_type = Type::Error;
+  current_data_start = 0;
 }
 
 STRUCTIFY_FORCE_INLINE void Tokenizer::resetForNewValue()
@@ -2048,36 +1935,6 @@ inline Error Tokenizer::skipComment(const DataRef &json_data, size_t *chars_ahea
   return Error::NeedMoreData;
 }
 
-inline void Tokenizer::requestMoreData()
-{
-  if (need_more_data_callback)
-    need_more_data_callback(*this);
-}
-
-inline void Tokenizer::releaseFirstDataRef()
-{
-  if (STRUCTIFY_UNLIKELY(data_list.empty()))
-    return;
-
-  const DataRef &json_data = data_list.front();
-
-  // Optimize string operations: append directly instead of creating temporary
-  for (auto &copy_pair : copy_buffers)
-  {
-    size_t copy_size = json_data.size - copy_pair.first;
-    copy_pair.second->append(json_data.data + copy_pair.first, copy_size);
-    copy_pair.first = 0;
-  }
-
-  cursor_index = 0;
-  current_data_start = 0;
-
-  const char *data_to_release = json_data.data;
-  data_list.erase(data_list.begin());
-  if (release_callback)
-    release_callback(data_to_release);
-}
-
 inline Error Tokenizer::populateFromDataRef(DataRef &data, Type &type, const DataRef &json_data)
 {
   size_t diff = 0;
@@ -2217,34 +2074,10 @@ inline Error Tokenizer::populateNextTokenFromDataRef(Token &next_token, const Da
     switch (token_state)
     {
     case InTokenState::FindingName:
-      type = intermediate_token.name_type;
+      type = Type::Error;
       error = populateFromDataRef(data, type, json_data);
-      if (error == Error::NeedMoreData)
-      {
-        if (property_state > InPropertyState::NoStartFound)
-        {
-          intermediate_token.active = true;
-          size_t to_null = Internal::strnlen(data.data, json_data.size - current_data_start);
-          intermediate_token.name.append(data.data, to_null);
-          if (!intermediate_token.name_type_set)
-          {
-            intermediate_token.name_type = type;
-            intermediate_token.name_type_set = true;
-          }
-        }
+      if (error != Error::NoError)
         return error;
-      }
-      else if (error != Error::NoError)
-      {
-        return error;
-      }
-
-      if (intermediate_token.active)
-      {
-        intermediate_token.name.append(data.data, data.size);
-        data = DataRef(intermediate_token.name);
-        type = intermediate_token.name_type;
-      }
 
       if (type == Type::ObjectEnd || type == Type::ArrayEnd || type == Type::ArrayStart || type == Type::ObjectStart)
       {
@@ -2283,15 +2116,7 @@ inline Error Tokenizer::populateNextTokenFromDataRef(Token &next_token, const Da
     case InTokenState::FindingDelimiter:
       error = findDelimiter(json_data, &diff);
       if (error != Error::NoError)
-      {
-        if (intermediate_token.active == false)
-        {
-          intermediate_token.name.append(tmp_token.name.data, tmp_token.name.size);
-          intermediate_token.name_type = tmp_token.name_type;
-          intermediate_token.active = true;
-        }
         return error;
-      }
       cursor_index += diff;
       resetForNewValue();
       expecting_prop_or_anonymous_data = false;
@@ -2313,46 +2138,10 @@ inline Error Tokenizer::populateNextTokenFromDataRef(Token &next_token, const Da
       break;
 
     case InTokenState::FindingData:
-      type = intermediate_token.data_type;
+      type = Type::Error;
       error = populateFromDataRef(data, type, json_data);
-      if (error == Error::NeedMoreData)
-      {
-        if (intermediate_token.active == false)
-        {
-          intermediate_token.name.append(tmp_token.name.data, tmp_token.name.size);
-          intermediate_token.name_type = tmp_token.name_type;
-          intermediate_token.active = true;
-        }
-        if (property_state > InPropertyState::NoStartFound)
-        {
-          size_t data_length = Internal::strnlen(data.data, json_data.size - current_data_start);
-          intermediate_token.data.append(data.data, data_length);
-          if (!intermediate_token.data_type_set)
-          {
-            intermediate_token.data_type = type;
-            intermediate_token.data_type_set = true;
-          }
-        }
+      if (error != Error::NoError)
         return error;
-      }
-      else if (error != Error::NoError)
-      {
-        return error;
-      }
-
-      if (intermediate_token.active)
-      {
-        intermediate_token.data.append(data.data, data.size);
-        if (!intermediate_token.data_type_set)
-        {
-          intermediate_token.data_type = type;
-          intermediate_token.data_type_set = true;
-        }
-        tmp_token.name = DataRef(intermediate_token.name);
-        tmp_token.name_type = intermediate_token.name_type;
-        data = DataRef(intermediate_token.data);
-        type = intermediate_token.data_type;
-      }
 
       tmp_token.value = data;
       tmp_token.value_type = Internal::getType(type, tmp_token.value.data, tmp_token.value.size);
@@ -2373,9 +2162,7 @@ inline Error Tokenizer::populateNextTokenFromDataRef(Token &next_token, const Da
     case InTokenState::FindingTokenEnd:
       error = findTokenEnd(json_data, &diff);
       if (error != Error::NoError)
-      {
         return error;
-      }
       cursor_index += diff;
       token_state = InTokenState::FindingName;
       break;
@@ -2397,14 +2184,14 @@ STRUCTIFY_COLD inline Error Tokenizer::updateErrorContext(Error error, const std
 {
   error_context.error = error;
   error_context.custom_message = custom_message;
-  if ((!parsed_data_vector || parsed_data_vector->empty()) && data_list.empty())
+  if ((!parsed_data_vector || parsed_data_vector->empty()) && data_.size == 0)
     return error;
 
   const DataRef json_data =
     parsed_data_vector && parsed_data_vector->size()
       ? DataRef(parsed_data_vector->front().value.data,
                 size_t(parsed_data_vector->back().value.data - parsed_data_vector->front().value.data))
-      : data_list.front();
+      : data_;
   int64_t real_cursor_index = parsed_data_vector && parsed_data_vector->size()
                                ? int64_t (parsed_data_vector->at(cursor_index).value.data - json_data.data)
                                : int64_t(cursor_index);
@@ -2499,9 +2286,10 @@ static inline STFY::Error reformat(const char *data, size_t size, std::string &o
     out.resize(4096);
   serializer.setBuffer(&out[0], out.size());
 
+  size_t count;
   while (error == Error::NoError)
   {
-    error = tokenizer.nextToken(token);
+    error = tokenizer.nextTokens(&token, 1, count);
     if (error != Error::NoError)
       break;
     serializer.write(token);
