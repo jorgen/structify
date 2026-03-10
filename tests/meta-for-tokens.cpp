@@ -1,4 +1,4 @@
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 #include "catch2/catch_all.hpp"
 
@@ -31,15 +31,15 @@ const char json_string[] = R"json(
 
 TEST_CASE("testMetaForTokens", "[meta]")
 {
-  JS::ParseContext context(json_string);
-  JS::JsonTokens tokens;
+  STFY::ParseContext context(json_string);
+  STFY::JsonTokens tokens;
   auto error = context.parseTo(tokens);
-  REQUIRE(error == JS::Error::NoError);
+  REQUIRE(error == STFY::Error::NoError);
 
-  std::vector<JS::JsonMeta> metaInfo = JS::metaForTokens(tokens);
+  std::vector<STFY::JsonMeta> metaInfo = STFY::metaForTokens(tokens);
   REQUIRE(metaInfo.size());
   REQUIRE(!metaInfo[3].is_array);
-  JS::Token token = tokens.data.at(metaInfo.at(3).position);
+  STFY::Token token = tokens.data.at(metaInfo.at(3).position);
   REQUIRE(std::string("member_three") == std::string(token.name.data, token.name.size));
   token = tokens.data.at(metaInfo.at(3).position + metaInfo.at(3).size);
   REQUIRE(std::string("member_four") == std::string(token.name.data, token.name.size));

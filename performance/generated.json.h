@@ -1,5 +1,5 @@
 #pragma once
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 #include "include/nlohmann/json.hpp"
 #include <glaze/glaze.hpp>
 
@@ -8,7 +8,7 @@ struct Friends
     int id;
     std::string name;
 };
-JS_OBJ_EXT(Friends, id, name);
+STFY_OBJ_EXT(Friends, id, name);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Friends, id, name);
 
 template <>
@@ -46,7 +46,7 @@ struct JPerson
     std::string favoriteFruit;
 
 };
-JS_OBJ_EXT(JPerson, _id, index, guid, isActive, balance, picture, age, eyeColor, name, gender, company, email, phone,
+STFY_OBJ_EXT(JPerson, _id, index, guid, isActive, balance, picture, age, eyeColor, name, gender, company, email, phone,
            address, about, registered, latitude, longitude, tags, friends, greeting, favoriteFruit);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(JPerson, _id, index, guid, isActive, balance, picture, age, eyeColor, name, gender,
                                    company, email, phone, address, about, registered, latitude, longitude, tags,
@@ -111,7 +111,7 @@ struct SmallPerson
 {
   std::string name;
 };
-JS_OBJ_EXT(SmallPerson, name);
+STFY_OBJ_EXT(SmallPerson, name);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SmallPerson, name);
 
 template <>

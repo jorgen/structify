@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(JsonStructTester
-        DESCRIPTION "Tester package for json_struct"
+project(StructifyTester
+        DESCRIPTION "Tester package for structify"
         LANGUAGES C CXX)
 
-find_package(json_struct REQUIRED)
+find_package(structify REQUIRED)
 
 add_executable(${PROJECT_NAME} main.cpp)
 
-target_link_libraries(${PROJECT_NAME} json_struct::json_struct)
+target_link_libraries(${PROJECT_NAME} structify::structify)

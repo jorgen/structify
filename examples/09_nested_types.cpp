@@ -1,5 +1,5 @@
 #include <string>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 template<typename T>
 struct Vec3
@@ -9,7 +9,7 @@ struct Vec3
 
 //Nested types are fully supported and the limitation of the data structures
 //that can be expressed is limited by C++
-namespace JS
+namespace STFY
 {
 template<typename T>
 struct TypeHandler<Vec3<T>>
@@ -30,7 +30,7 @@ struct InnerJsonData
 {
     int key;
     double value;
-    JS_OBJ(key, value);
+    STFY_OBJ(key, value);
 };
 
 const char json[] = R"json(
@@ -49,15 +49,15 @@ struct JsonData
     std::string key;
     Vec3<InnerJsonData> vec;
 
-    JS_OBJECT(JS_MEMBER(key),
-              JS_MEMBER(vec));
+    STFY_OBJECT(STFY_MEMBER(key),
+              STFY_MEMBER(vec));
 };
 
 int main()
 {
     JsonData dataStruct;
-    JS::ParseContext parseContext(json);
-    if (parseContext.parseTo(dataStruct) != JS::Error::NoError)
+    STFY::ParseContext parseContext(json);
+    if (parseContext.parseTo(dataStruct) != STFY::Error::NoError)
     {
         std::string errorStr = parseContext.makeErrorString();
         fprintf(stderr, "Error parsing struct %s\n", errorStr.c_str());

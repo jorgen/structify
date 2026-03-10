@@ -21,7 +21,7 @@
  */
 
 #include "catch2/catch_all.hpp"
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 #include <string>
 
 namespace multiple_compilation_units
@@ -45,7 +45,7 @@ extern bool deserialize_json1(const std::string &json);
 extern std::string serialize_json2(float num1, double num2);
 extern bool deserialize_json2(const std::string &json);
 
-TEST_CASE("test_multiple_compilation_units", "[json_struct]")
+TEST_CASE("test_multiple_compilation_units", "[structify]")
 {
   std::string json1 = serialize_json1(1.111f, 2.222);
   std::string json2 = serialize_json2(1.111f, 2.222);

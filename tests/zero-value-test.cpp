@@ -20,7 +20,7 @@
  * OF THIS SOFTWARE.
  */
 
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 #include "catch2/catch_all.hpp"
 
@@ -61,7 +61,7 @@ struct ZeroValueStruct
   double d_pos_zero;
   double d_neg_zero;
 
-  JS_OBJECT(JS_MEMBER(f_pos_zero), JS_MEMBER(f_neg_zero), JS_MEMBER(d_pos_zero), JS_MEMBER(d_neg_zero));
+  STFY_OBJECT(STFY_MEMBER(f_pos_zero), STFY_MEMBER(f_neg_zero), STFY_MEMBER(d_pos_zero), STFY_MEMBER(d_neg_zero));
 };
 
 // Notes:
@@ -75,9 +75,9 @@ void test_zero_value_parse(const char *const json)
   static double d_neg_zero = -0.0;
 
   ZeroValueStruct zero;
-  JS::ParseContext pc(json);
+  STFY::ParseContext pc(json);
   pc.parseTo(zero);
-  REQUIRE(pc.error == JS::Error::NoError);
+  REQUIRE(pc.error == STFY::Error::NoError);
 
   REQUIRE(zero.f_pos_zero == f_pos_zero);//-V550
   REQUIRE(zero.f_neg_zero == f_neg_zero);//-V550
@@ -92,16 +92,16 @@ void test_zero_value_parse(const char *const json)
   // --------------------------
   // Keeping this code to debug on GCC later. foo2 == bar2 fails!
   // auto foo1 =
-  // *reinterpret_cast<JS::Internal::ft::float_info<decltype(zero.f_pos_zero)>::uint_alias*>(&zero.f_pos_zero); auto foo2
-  // = *reinterpret_cast<JS::Internal::ft::float_info<decltype(zero.f_neg_zero)>::uint_alias*>(&zero.f_neg_zero); auto
-  // foo3 = *reinterpret_cast<JS::Internal::ft::float_info<decltype(zero.d_pos_zero)>::uint_alias*>(&zero.d_pos_zero);
+  // *reinterpret_cast<STFY::Internal::ft::float_info<decltype(zero.f_pos_zero)>::uint_alias*>(&zero.f_pos_zero); auto foo2
+  // = *reinterpret_cast<STFY::Internal::ft::float_info<decltype(zero.f_neg_zero)>::uint_alias*>(&zero.f_neg_zero); auto
+  // foo3 = *reinterpret_cast<STFY::Internal::ft::float_info<decltype(zero.d_pos_zero)>::uint_alias*>(&zero.d_pos_zero);
   // auto foo4 =
-  // *reinterpret_cast<JS::Internal::ft::float_info<decltype(zero.d_neg_zero)>::uint_alias*>(&zero.d_neg_zero);
+  // *reinterpret_cast<STFY::Internal::ft::float_info<decltype(zero.d_neg_zero)>::uint_alias*>(&zero.d_neg_zero);
 
-  // auto bar1 = *reinterpret_cast<JS::Internal::ft::float_info<decltype(f_pos_zero)>::uint_alias*>(&f_pos_zero);
-  // auto bar2 = *reinterpret_cast<JS::Internal::ft::float_info<decltype(f_neg_zero)>::uint_alias*>(&f_neg_zero);
-  // auto bar3 = *reinterpret_cast<JS::Internal::ft::float_info<decltype(d_pos_zero)>::uint_alias*>(&d_pos_zero);
-  // auto bar4 = *reinterpret_cast<JS::Internal::ft::float_info<decltype(d_neg_zero)>::uint_alias*>(&d_neg_zero);
+  // auto bar1 = *reinterpret_cast<STFY::Internal::ft::float_info<decltype(f_pos_zero)>::uint_alias*>(&f_pos_zero);
+  // auto bar2 = *reinterpret_cast<STFY::Internal::ft::float_info<decltype(f_neg_zero)>::uint_alias*>(&f_neg_zero);
+  // auto bar3 = *reinterpret_cast<STFY::Internal::ft::float_info<decltype(d_pos_zero)>::uint_alias*>(&d_pos_zero);
+  // auto bar4 = *reinterpret_cast<STFY::Internal::ft::float_info<decltype(d_neg_zero)>::uint_alias*>(&d_neg_zero);
 
   // REQUIRE(foo1 == bar1);
   // REQUIRE(foo2 == bar2);

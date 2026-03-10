@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Configure CMake
-        run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+        run: cmake -B./build -DSTRUCTIFY_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
       - name: Build
         run: ninja -C build
@@ -53,7 +53,7 @@ jobs:
           toolset: 14.0
 
       - name: Configure CMake
-        run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+        run: cmake -B./build -DSTRUCTIFY_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
       - name: Build
         run: ninja -C build
@@ -87,7 +87,7 @@ jobs:
           toolset: 14.29
 
       - name: Configure CMake
-        run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+        run: cmake -B./build -DSTRUCTIFY_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
       - name: Build
         run: ninja -C build
@@ -121,7 +121,7 @@ jobs:
           toolset: 14.44
 
       - name: Configure CMake
-        run: cmake -B./build -DJSON_STRUCT_OPT_BUILD_BENCHMARKS=OFF -GNinja
+        run: cmake -B./build -DSTRUCTIFY_OPT_BUILD_BENCHMARKS=OFF -GNinja
 
       - name: Build
         run: ninja -C build

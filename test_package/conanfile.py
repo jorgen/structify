@@ -5,7 +5,7 @@ from conan.tools.cmake import CMake, cmake_layout
 from conan.tools.build import can_run
 
 
-class JsonStructTest(ConanFile):
+class StructifyTest(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeDeps", "CMakeToolchain"
 
@@ -23,6 +23,6 @@ class JsonStructTest(ConanFile):
     def test(self):
         if can_run(self):
             self.output.info("Checking compiled tester...")
-            cmd = os.path.join(self.cpp.build.bindir, "JsonStructTester")
+            cmd = os.path.join(self.cpp.build.bindir, "StructifyTester")
             self.run(cmd, env="conanrun")
 

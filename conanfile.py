@@ -6,15 +6,15 @@ from conan.tools.files import copy
 
 import os
 
-class JsonStructLibrary(ConanFile):
-    name = "json_struct"
+class StructifyLibrary(ConanFile):
+    name = "structify"
 
     # Metadata
     license = "MIT"
     version = "1.0.0"
     author = "Jørgen Lind <jorgen.lind@gmail.com>"
-    url = "https://github.com/jorgen/json_struct"
-    description = "json_struct is a single header only C++ library for parsing JSON directly to C++ structs and vice versa"
+    url = "https://github.com/jorgen/structify"
+    description = "structify is a single header only C++ library for parsing JSON directly to C++ structs and vice versa"
 
     topics = ("serialization", "deserialization", "reflection", "json")
 
@@ -42,11 +42,11 @@ class JsonStructLibrary(ConanFile):
     def generate(self):
         toolchain = CMakeToolchain(self)
 
-        toolchain.variables["JSON_STRUCT_OPT_BUILD_BENCHMARKS"] = self.options.opt_build_benchmarks.value
-        toolchain.variables["JSON_STRUCT_OPT_BUILD_EXAMPLES"] = self.options.opt_build_examples.value
-        toolchain.variables["JSON_STRUCT_OPT_BUILD_TESTS"] = self.options.opt_build_tests.value
-        toolchain.variables["JSON_STRUCT_OPT_DISABLE_PCH"] = self.options.opt_disable_pch.value
-        toolchain.variables["JSON_STRUCT_OPT_INSTALL"] = self.options.opt_install
+        toolchain.variables["STRUCTIFY_OPT_BUILD_BENCHMARKS"] = self.options.opt_build_benchmarks.value
+        toolchain.variables["STRUCTIFY_OPT_BUILD_EXAMPLES"] = self.options.opt_build_examples.value
+        toolchain.variables["STRUCTIFY_OPT_BUILD_TESTS"] = self.options.opt_build_tests.value
+        toolchain.variables["STRUCTIFY_OPT_DISABLE_PCH"] = self.options.opt_disable_pch.value
+        toolchain.variables["STRUCTIFY_OPT_INSTALL"] = self.options.opt_install
 
         toolchain.generate()
 

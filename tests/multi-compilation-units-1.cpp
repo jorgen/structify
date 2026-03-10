@@ -21,7 +21,7 @@
  */
 
 #include "catch2/catch_all.hpp"
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 #include <string>
 
 namespace multiple_compilation_units
@@ -31,21 +31,21 @@ struct Json1
   float num1;
   double num2;
 
-  JS_OBJECT(JS_MEMBER(num1), JS_MEMBER(num2));
+  STFY_OBJECT(STFY_MEMBER(num1), STFY_MEMBER(num2));
 };
 
 std::string serialize_json1(float num1, double num2)
 {
   Json1 json1{num1, num2};
-  return JS::serializeStruct(json1);
+  return STFY::serializeStruct(json1);
 }
 
 bool deserialize_json1(const std::string &json)
 {
-  JS::ParseContext pc(json);
+  STFY::ParseContext pc(json);
   Json1 json1;
   auto error = pc.parseTo(json1);
-  REQUIRE(error == JS::Error::NoError);
-  return pc.error == JS::Error::NoError;
+  REQUIRE(error == STFY::Error::NoError);
+  return pc.error == STFY::Error::NoError;
 }
 } // namespace multiple_compilation_units

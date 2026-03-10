@@ -1,12 +1,12 @@
 #include <string>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 #include <cinttypes>
 //these two have to be ifdef guarded becuase JS support compiler versions where
 //they are not implemented, hence if you use unordered_map or optional in your code there is no need for the guards.
-#ifdef JS_STD_UNORDERED_MAP
+#ifdef STFY_STD_UNORDERED_MAP
 #include <unordered_map>
 #endif
-#ifdef JS_STD_OPTIONAL
+#ifdef STFY_STD_OPTIONAL
 #include <optional>
 #endif
 
@@ -31,7 +31,7 @@ const char json[] = R"json(
 struct SubType
 {
     int member;
-    JS_OBJ(member);
+    STFY_OBJ(member);
 };
 
 struct JsonData
@@ -39,15 +39,15 @@ struct JsonData
     std::vector<int> vector;
     std::string string;
     std::tuple<std::string, float, SubType> tuple;
-#ifdef JS_STD_UNORDERED_MAP
+#ifdef STFY_STD_UNORDERED_MAP
     std::unordered_map<std::string, double> unordered_map;
 #else
-    JS::JsonObject unordered_map;
+    STFY::JsonObject unordered_map;
 #endif
-#ifdef JS_STD_OPTIONAL
+#ifdef STFY_STD_OPTIONAL
     std::optional<std::string> optional;
 #else
-    JS::Optional<std::string> optional;
+    STFY::Optional<std::string> optional;
 #endif
 
     uint8_t uint8_number;
@@ -55,7 +55,7 @@ struct JsonData
     uint32_t uint32_number;
     uint64_t uint64_number;
 
-    JS_OBJ(vector,
+    STFY_OBJ(vector,
            string,
            tuple,
            unordered_map,
@@ -69,8 +69,8 @@ struct JsonData
 int main()
 {
     JsonData dataStruct;
-    JS::ParseContext parseContext(json);
-    if (parseContext.parseTo(dataStruct) != JS::Error::NoError)
+    STFY::ParseContext parseContext(json);
+    if (parseContext.parseTo(dataStruct) != STFY::Error::NoError)
     {
         std::string errorStr = parseContext.makeErrorString();
         fprintf(stderr, "Error parsing struct %s\n", errorStr.c_str());
@@ -84,12 +84,12 @@ int main()
     fprintf(stderr, "\t%s\n", std::get<0>(dataStruct.tuple).c_str());
     fprintf(stderr, "\t%f\n", std::get<1>(dataStruct.tuple));
     fprintf(stderr, "\tmember: %d\n", std::get<2>(dataStruct.tuple).member);
-#ifdef JS_STD_UNORDERED_MAP
+#ifdef STFY_STD_UNORDERED_MAP
     fprintf(stderr, "unordered_map:\n");
     for (auto it : dataStruct.unordered_map)
         fprintf(stderr, "\t%s : %f\n", it.first.c_str(), it.second);
 #endif
-#ifdef JS_STD_OPTIONAL
+#ifdef STFY_STD_OPTIONAL
     fprintf(stderr, "%s\n", dataStruct.optional.value());
 #endif
     fprintf(stderr, "uint8_number %" PRIu8 "\n", dataStruct.uint8_number);

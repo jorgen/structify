@@ -1,4 +1,4 @@
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 #include "catch2/catch_all.hpp"
 
@@ -10,41 +10,41 @@ struct SimpleStruct
   std::string name;
   int age;
   float score;
-  JS_OBJ(name, age, score);
+  STFY_OBJ(name, age, score);
 };
 
 struct NestedInner
 {
   std::string street;
   std::string city;
-  JS_OBJ(street, city);
+  STFY_OBJ(street, city);
 };
 
 struct NestedOuter
 {
   std::string name;
   NestedInner address;
-  JS_OBJ(name, address);
+  STFY_OBJ(name, address);
 };
 
 struct WithVector
 {
   std::string name;
   std::vector<int> scores;
-  JS_OBJ(name, scores);
+  STFY_OBJ(name, scores);
 };
 
 struct WithStringVector
 {
   std::vector<std::string> items;
-  JS_OBJ(items);
+  STFY_OBJ(items);
 };
 
 struct Person
 {
   std::string name;
   int age;
-  JS_OBJ(name, age);
+  STFY_OBJ(name, age);
 };
 
 struct WithBooleans
@@ -53,15 +53,15 @@ struct WithBooleans
   bool active;
   bool visible;
   bool debug;
-  JS_OBJ(enabled, active, visible, debug);
+  STFY_OBJ(enabled, active, visible, debug);
 };
 
 struct WithOptional
 {
   std::string name;
-  JS::Optional<int> age;
-  JS::Optional<std::string> email;
-  JS_OBJ(name, age, email);
+  STFY::Optional<int> age;
+  STFY::Optional<std::string> email;
+  STFY_OBJ(name, age, email);
 };
 
 struct DeepNested
@@ -71,13 +71,13 @@ struct DeepNested
     struct Level3
     {
       std::string value;
-      JS_OBJ(value);
+      STFY_OBJ(value);
     };
     Level3 level3;
-    JS_OBJ(level3);
+    STFY_OBJ(level3);
   };
   Level2 level2;
-  JS_OBJ(level2);
+  STFY_OBJ(level2);
 };
 
 struct MixedStruct
@@ -86,14 +86,14 @@ struct MixedStruct
   int age;
   bool active;
   std::vector<std::string> hobbies;
-  JS_OBJ(name, age, active, hobbies);
+  STFY_OBJ(name, age, active, hobbies);
 };
 
 struct WithFlowValues
 {
   std::string name;
   std::vector<int> nums;
-  JS_OBJ(name, nums);
+  STFY_OBJ(name, nums);
 };
 
 TEST_CASE("yaml_parse_simple_struct", "[yaml][struct]")
@@ -103,14 +103,14 @@ age: 30
 score: 95.5
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
   REQUIRE(s.age == 30);
   REQUIRE(s.score == Catch::Approx(95.5f));
@@ -124,14 +124,14 @@ address:
   city: Springfield
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   NestedOuter s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
   REQUIRE(s.address.street == "123 Main St");
   REQUIRE(s.address.city == "Springfield");
@@ -146,14 +146,14 @@ scores:
   - 88
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   WithVector s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "test");
   REQUIRE(s.scores.size() == 3);
   REQUIRE(s.scores[0] == 100);
@@ -169,14 +169,14 @@ TEST_CASE("yaml_parse_vector_of_strings", "[yaml][struct]")
   - cherry
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   WithStringVector s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.items.size() == 3);
   REQUIRE(s.items[0] == "apple");
   REQUIRE(s.items[1] == "banana");
@@ -193,14 +193,14 @@ TEST_CASE("yaml_parse_vector_of_structs", "[yaml][struct]")
   age: 35
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   std::vector<Person> people;
   context.parseTo(people);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(people.size() == 3);
   REQUIRE(people[0].name == "John");
   REQUIRE(people[0].age == 30);
@@ -218,14 +218,14 @@ visible: on
 debug: no
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   WithBooleans s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.enabled == true);
   REQUIRE(s.active == true);
   REQUIRE(s.visible == true);
@@ -238,14 +238,14 @@ TEST_CASE("yaml_parse_optional_members", "[yaml][struct]")
 age: 30
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   WithOptional s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
   REQUIRE(s.age.data == 30);
   // email is not in YAML, should remain default
@@ -258,14 +258,14 @@ TEST_CASE("yaml_parse_deeply_nested", "[yaml][struct]")
     value: deep
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   DeepNested s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.level2.level3.value == "deep");
 }
 
@@ -280,14 +280,14 @@ hobbies:
   - cooking
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   MixedStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Alice");
   REQUIRE(s.age == 28);
   REQUIRE(s.active == true);
@@ -305,14 +305,14 @@ age: 30
 score: 100.0
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
   REQUIRE(s.age == 30);
   REQUIRE(s.score == Catch::Approx(100.0f));
@@ -324,14 +324,14 @@ TEST_CASE("yaml_parse_flow_array_value", "[yaml][struct]")
 nums: [1, 2, 3]
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   WithFlowValues s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "test");
   REQUIRE(s.nums.size() == 3);
   REQUIRE(s.nums[0] == 1);
@@ -348,14 +348,14 @@ extra_field: ignored
 another: also_ignored
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
   REQUIRE(s.age == 30);
   REQUIRE(s.score == Catch::Approx(95.5f));
@@ -369,14 +369,14 @@ age: 30
 score: 100.0
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
   REQUIRE(s.age == 30);
 }
@@ -388,14 +388,14 @@ age: 30
 score: 0.0
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John Doe");
 }
 
@@ -406,14 +406,14 @@ age: -5
 score: -3.14
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.age == -5);
   REQUIRE(s.score == Catch::Approx(-3.14f));
 }
@@ -427,14 +427,14 @@ age: 30
 score: 0.0
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "line one\nline two\n");
   REQUIRE(s.age == 30);
 }
@@ -445,7 +445,7 @@ struct TlsConfig
 {
   bool enabled;
   std::string cert;
-  JS_OBJ(enabled, cert);
+  STFY_OBJ(enabled, cert);
 };
 
 struct DatabaseConfig
@@ -453,7 +453,7 @@ struct DatabaseConfig
   std::string host;
   int port;
   std::string name;
-  JS_OBJ(host, port, name);
+  STFY_OBJ(host, port, name);
 };
 
 struct ServerConfig
@@ -464,7 +464,7 @@ struct ServerConfig
   DatabaseConfig database;
   TlsConfig tls;
   std::string description;
-  JS_OBJ(host, port, debug, database, tls, description);
+  STFY_OBJ(host, port, debug, database, tls, description);
 };
 
 TEST_CASE("yaml_server_config_block_scalars", "[yaml][struct]")
@@ -488,14 +488,14 @@ description: >
   for the application.
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   ServerConfig s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.host == "0.0.0.0");
   REQUIRE(s.port == 8080);
   REQUIRE(s.debug == false);
@@ -514,14 +514,14 @@ struct PipelineStage
   std::string name;
   std::string image;
   std::vector<std::string> commands;
-  JS_OBJ(name, image, commands);
+  STFY_OBJ(name, image, commands);
 };
 
 struct Pipeline
 {
   std::string version;
   std::vector<PipelineStage> stages;
-  JS_OBJ(version, stages);
+  STFY_OBJ(version, stages);
 };
 
 TEST_CASE("yaml_ci_pipeline_config", "[yaml][struct]")
@@ -545,14 +545,14 @@ stages:
       - ./deploy.sh
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   Pipeline s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.version == "3");
   REQUIRE(s.stages.size() == 3);
 
@@ -581,7 +581,7 @@ struct Point
 {
   int x;
   int y;
-  JS_OBJ(x, y);
+  STFY_OBJ(x, y);
 };
 
 struct FlowCollections
@@ -590,7 +590,7 @@ struct FlowCollections
   std::vector<int> values;
   std::vector<std::string> tags;
   Point origin;
-  JS_OBJ(name, values, tags, origin);
+  STFY_OBJ(name, values, tags, origin);
 };
 
 TEST_CASE("yaml_flow_collections_struct", "[yaml][struct]")
@@ -601,14 +601,14 @@ tags: [geometry, 2d, primary]
 origin: {x: 5, y: 10}
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   FlowCollections s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "shape");
   REQUIRE(s.values.size() == 4);
   REQUIRE(s.values[0] == 10);
@@ -631,7 +631,7 @@ struct QuotedStrings
   std::string with_tab;
   std::string with_quote;
   std::string single_quoted;
-  JS_OBJ(double_escaped, with_tab, with_quote, single_quoted);
+  STFY_OBJ(double_escaped, with_tab, with_quote, single_quoted);
 };
 
 TEST_CASE("yaml_quoted_strings_struct", "[yaml][struct]")
@@ -642,14 +642,14 @@ with_quote: "she said \"hello\""
 single_quoted: 'it''s a test'
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   QuotedStrings s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.double_escaped == "line1\nline2\nline3");
   REQUIRE(s.with_tab == "col1\tcol2\tcol3");
   REQUIRE(s.with_quote == "she said \"hello\"");
@@ -662,13 +662,13 @@ struct EnvVar
 {
   std::string name;
   std::string value;
-  JS_OBJ(name, value);
+  STFY_OBJ(name, value);
 };
 
 struct ContainerPort
 {
   int containerPort;
-  JS_OBJ(containerPort);
+  STFY_OBJ(containerPort);
 };
 
 struct Container
@@ -677,27 +677,27 @@ struct Container
   std::string image;
   std::vector<ContainerPort> ports;
   std::vector<EnvVar> env;
-  JS_OBJ(name, image, ports, env);
+  STFY_OBJ(name, image, ports, env);
 };
 
 struct Labels
 {
   std::string app;
   std::string tier;
-  JS_OBJ(app, tier);
+  STFY_OBJ(app, tier);
 };
 
 struct Metadata
 {
   std::string name;
   Labels labels;
-  JS_OBJ(name, labels);
+  STFY_OBJ(name, labels);
 };
 
 struct PodSpec
 {
   std::vector<Container> containers;
-  JS_OBJ(containers);
+  STFY_OBJ(containers);
 };
 
 struct PodConfig
@@ -705,7 +705,7 @@ struct PodConfig
   std::string kind;
   Metadata metadata;
   PodSpec spec;
-  JS_OBJ(kind, metadata, spec);
+  STFY_OBJ(kind, metadata, spec);
 };
 
 TEST_CASE("yaml_complex_nested_k8s_like", "[yaml][struct]")
@@ -737,14 +737,14 @@ spec:
           value: 5s
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   PodConfig s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.kind == "Pod");
   REQUIRE(s.metadata.name == "my-app");
   REQUIRE(s.metadata.labels.app == "web-server");
@@ -782,7 +782,7 @@ struct CommentedConfig
   int workers;
   bool verbose;
   std::vector<std::string> endpoints;
-  JS_OBJ(name, workers, verbose, endpoints);
+  STFY_OBJ(name, workers, verbose, endpoints);
 };
 
 TEST_CASE("yaml_comments_everywhere", "[yaml][struct]")
@@ -803,14 +803,14 @@ endpoints: # begin list
   - /metrics # prometheus metrics
 )";
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   CommentedConfig s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "my-service");
   REQUIRE(s.workers == 4);
   REQUIRE(s.verbose == true);

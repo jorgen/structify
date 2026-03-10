@@ -1,5 +1,5 @@
 #include <string>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 const char json[] = R"json(
 {
@@ -16,7 +16,7 @@ struct VecMember
   std::string key;
   double value = 0.0;
 
-  JS_OBJ(key, value);
+  STFY_OBJ(key, value);
 };
 
 
@@ -30,7 +30,7 @@ struct ModuleList
   int size = 0;
 };
 
-namespace JS
+namespace STFY
 {
 template <>
 struct TypeHandler<ModuleList>
@@ -38,12 +38,12 @@ struct TypeHandler<ModuleList>
   static inline Error to(ModuleList &to_type, ParseContext &context)
   {
     if (context.token.value_type != Type::ArrayStart)
-      return JS::Error::ExpectedArrayStart;
+      return STFY::Error::ExpectedArrayStart;
 
     context.nextToken();
     for (int i = 0; i < int(ModuleList::ReservedSize); i++)
     {
-      if (context.error != JS::Error::NoError)
+      if (context.error != STFY::Error::NoError)
         return context.error;
       if (context.token.value_type == Type::ArrayEnd)
       {
@@ -51,14 +51,14 @@ struct TypeHandler<ModuleList>
         break;
       }
       context.error = TypeHandler<VecMember>::to(to_type.modules[i], context);
-      if (context.error != JS::Error::NoError)
+      if (context.error != STFY::Error::NoError)
         return context.error;
 
       context.nextToken();
     }
 
     if (context.token.value_type != Type::ArrayEnd)
-      return JS::Error::ExpectedArrayEnd;
+      return STFY::Error::ExpectedArrayEnd;
     return context.error;
   }
 
@@ -78,20 +78,20 @@ struct TypeHandler<ModuleList>
     serializer.write(token);
   }
 };
-} // namespace JS
+} // namespace STFY
 
 struct JsonObject
 {
   ModuleList vec;
-  JS_OBJ(vec);
+  STFY_OBJ(vec);
 };
 
 
 int main()
 {
     JsonObject obj;
-    JS::ParseContext parseContext(json);
-    if (parseContext.parseTo(obj) != JS::Error::NoError)
+    STFY::ParseContext parseContext(json);
+    if (parseContext.parseTo(obj) != STFY::Error::NoError)
     {
         std::string errorStr = parseContext.makeErrorString();
         fprintf(stderr, "Error parsing struct %s\n", errorStr.c_str());

@@ -1,4 +1,4 @@
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 #include <catch2/catch_all.hpp>
 #include <filesystem>
 #include <fstream>
@@ -229,10 +229,10 @@ static std::string jsonUnescapeString(const std::string &raw)
   return result;
 }
 
-static TestValue scalarFromToken(const JS::Token &token, AnchorMap &anchors, bool json_mode = false)
+static TestValue scalarFromToken(const STFY::Token &token, AnchorMap &anchors, bool json_mode = false)
 {
   // Handle alias tokens
-  if (token.value_type == JS::Type::Alias)
+  if (token.value_type == STFY::Type::Alias)
   {
     std::string alias_name(token.value.data, token.value.size);
     auto it = anchors.find(alias_name);
@@ -249,19 +249,19 @@ static TestValue scalarFromToken(const JS::Token &token, AnchorMap &anchors, boo
   val.scalar = std::string(token.value.data, token.value.size);
   switch (token.value_type)
   {
-  case JS::Type::Null:
+  case STFY::Type::Null:
     val.kind = TestValue::Null;
     break;
-  case JS::Type::Bool:
+  case STFY::Type::Bool:
     val.kind = TestValue::Bool;
     break;
-  case JS::Type::Number:
+  case STFY::Type::Number:
     val.kind = TestValue::Number;
     break;
-  case JS::Type::String:
-  case JS::Type::Ascii:
+  case STFY::Type::String:
+  case STFY::Type::Ascii:
     val.kind = TestValue::String;
-    if (json_mode && token.value_type == JS::Type::String)
+    if (json_mode && token.value_type == STFY::Type::String)
       val.scalar = jsonUnescapeString(val.scalar);
     break;
   default:
@@ -281,29 +281,29 @@ static TestValue scalarFromToken(const JS::Token &token, AnchorMap &anchors, boo
 
 static const int MAX_TOKENS = 10000;
 
-static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token, int &token_count, AnchorMap &anchors, bool json_mode = false)
+static TestValue parseContainer(STFY::Tokenizer &tok, const STFY::Token &start_token, int &token_count, AnchorMap &anchors, bool json_mode = false)
 {
   TestValue val;
-  if (start_token.value_type == JS::Type::ObjectStart)
+  if (start_token.value_type == STFY::Type::ObjectStart)
   {
     val.kind = TestValue::Object;
     while (true)
     {
       if (++token_count > MAX_TOKENS)
         throw std::runtime_error("token limit exceeded");
-      JS::Token inner;
-      JS::Error err = tok.nextToken(inner);
-      if (err != JS::Error::NoError)
+      STFY::Token inner;
+      STFY::Error err = tok.nextToken(inner);
+      if (err != STFY::Error::NoError)
         break;
-      if (inner.value_type == JS::Type::ObjectEnd)
+      if (inner.value_type == STFY::Type::ObjectEnd)
         break;
 
       std::string key(inner.name.data, inner.name.size);
-      if (json_mode && inner.name_type == JS::Type::String)
+      if (json_mode && inner.name_type == STFY::Type::String)
         key = jsonUnescapeString(key);
 
       // Resolve alias keys (when *alias is used as a mapping key, name_type == Alias)
-      if (inner.name_type == JS::Type::Alias && !key.empty())
+      if (inner.name_type == STFY::Type::Alias && !key.empty())
       {
         auto anchor_it = anchors.find(key);
         if (anchor_it != anchors.end() && anchor_it->second.kind == TestValue::String)
@@ -319,11 +319,11 @@ static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token
         anchors[std::string(inner.name_anchor.data, inner.name_anchor.size)] = key_val;
       }
 
-      if (inner.value_type == JS::Type::Alias)
+      if (inner.value_type == STFY::Type::Alias)
       {
         val.object_members.push_back({key, scalarFromToken(inner, anchors, json_mode)});
       }
-      else if (inner.value_type == JS::Type::ObjectStart || inner.value_type == JS::Type::ArrayStart)
+      else if (inner.value_type == STFY::Type::ObjectStart || inner.value_type == STFY::Type::ArrayStart)
       {
         TestValue child = parseContainer(tok, inner, token_count, anchors, json_mode);
         // Record anchor on container if present
@@ -340,25 +340,25 @@ static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token
       }
     }
   }
-  else if (start_token.value_type == JS::Type::ArrayStart)
+  else if (start_token.value_type == STFY::Type::ArrayStart)
   {
     val.kind = TestValue::Array;
     while (true)
     {
       if (++token_count > MAX_TOKENS)
         throw std::runtime_error("token limit exceeded");
-      JS::Token inner;
-      JS::Error err = tok.nextToken(inner);
-      if (err != JS::Error::NoError)
+      STFY::Token inner;
+      STFY::Error err = tok.nextToken(inner);
+      if (err != STFY::Error::NoError)
         break;
-      if (inner.value_type == JS::Type::ArrayEnd)
+      if (inner.value_type == STFY::Type::ArrayEnd)
         break;
 
-      if (inner.value_type == JS::Type::Alias)
+      if (inner.value_type == STFY::Type::Alias)
       {
         val.array_items.push_back(scalarFromToken(inner, anchors, json_mode));
       }
-      else if (inner.value_type == JS::Type::ObjectStart || inner.value_type == JS::Type::ArrayStart)
+      else if (inner.value_type == STFY::Type::ObjectStart || inner.value_type == STFY::Type::ArrayStart)
       {
         TestValue child = parseContainer(tok, inner, token_count, anchors, json_mode);
         if (inner.anchor.size > 0)
@@ -377,22 +377,22 @@ static TestValue parseContainer(JS::Tokenizer &tok, const JS::Token &start_token
   return val;
 }
 
-static TestValue tokensToValue(JS::Tokenizer &tok, bool json_mode = false)
+static TestValue tokensToValue(STFY::Tokenizer &tok, bool json_mode = false)
 {
   AnchorMap anchors;
-  JS::Token token;
-  JS::Error error = tok.nextToken(token);
-  if (error != JS::Error::NoError)
+  STFY::Token token;
+  STFY::Error error = tok.nextToken(token);
+  if (error != STFY::Error::NoError)
   {
     TestValue val;
     val.kind = TestValue::Null;
     return val;
   }
-  if (token.value_type == JS::Type::Alias)
+  if (token.value_type == STFY::Type::Alias)
   {
     return scalarFromToken(token, anchors, json_mode);
   }
-  if (token.value_type == JS::Type::ObjectStart || token.value_type == JS::Type::ArrayStart)
+  if (token.value_type == STFY::Type::ObjectStart || token.value_type == STFY::Type::ArrayStart)
   {
     int token_count = 0;
     TestValue result = parseContainer(tok, token, token_count, anchors, json_mode);
@@ -544,13 +544,13 @@ TEST_CASE("yaml_test_suite", "[yaml][suite]")
     try
     {
       // Parse YAML
-      JS::Tokenizer yaml_tok;
+      STFY::Tokenizer yaml_tok;
       yaml_tok.allowYaml(true);
       yaml_tok.addData(yaml_input.c_str(), yaml_input.size());
       TestValue yaml_val = tokensToValue(yaml_tok);
 
       // Parse JSON reference
-      JS::Tokenizer json_tok;
+      STFY::Tokenizer json_tok;
       json_tok.addData(json_input.c_str(), json_input.size());
       TestValue json_val = tokensToValue(json_tok, true);
 
@@ -558,7 +558,7 @@ TEST_CASE("yaml_test_suite", "[yaml][suite]")
       // (handles bare scalars like "foo" that aren't valid standalone JSON)
       if (json_val.kind == TestValue::Null && !json_input.empty())
       {
-        JS::Tokenizer yaml_json_tok;
+        STFY::Tokenizer yaml_json_tok;
         yaml_json_tok.allowYaml(true);
         yaml_json_tok.addData(json_input.c_str(), json_input.size());
         TestValue retry = tokensToValue(yaml_json_tok);

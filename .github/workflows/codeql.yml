@@ -12,7 +12,7 @@
 name: "CodeQL"
 
 env:
-  JSON_STRUCT_DISABLE_PCH: ON
+  STRUCTIFY_DISABLE_PCH: ON
 
 on:
   push:

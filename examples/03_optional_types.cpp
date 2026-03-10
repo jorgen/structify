@@ -1,6 +1,6 @@
 //Please see example 06_stdtypes for std::optional support
 #include <string>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 const char json[] = R"json(
 {
@@ -17,28 +17,28 @@ struct JsonData
     std::string key;
     int number = 0;
     bool boolean = false;
-    //sizeof(JS::Optional<double>) == sizeof(double) however if you want to see
-    //if it has been modified there is the JS::OptionalChecked. It has an "assigned" member
+    //sizeof(STFY::Optional<double>) == sizeof(double) however if you want to see
+    //if it has been modified there is the STFY::OptionalChecked. It has an "assigned" member
     //allowing the user to inspect if the type has been assigned
-    JS::Optional<double> opt = 32.5;
-    JS::OptionalChecked<double> opt_checked = 100;
+    STFY::Optional<double> opt = 32.5;
+    STFY::OptionalChecked<double> opt_checked = 100;
 
     std::string member_not_in_json;
 
-    JS_OBJ(key, number, boolean, opt, opt_checked, member_not_in_json);
+    STFY_OBJ(key, number, boolean, opt, opt_checked, member_not_in_json);
 };
 
 int main()
 {
     JsonData dataStruct;
-    JS::ParseContext parseContext(json);
+    STFY::ParseContext parseContext(json);
 
     //default values, but can be set to false to make parseTo return an error value
     parseContext.allow_missing_members = true;
     parseContext.allow_unasigned_required_members = true;
 
-    //JS::ParseContext has the member
-    if (parseContext.parseTo(dataStruct) != JS::Error::NoError)
+    //STFY::ParseContext has the member
+    if (parseContext.parseTo(dataStruct) != STFY::Error::NoError)
     {
         std::string errorStr = parseContext.makeErrorString();
         fprintf(stderr, "Error parsing struct %s\n", errorStr.c_str());

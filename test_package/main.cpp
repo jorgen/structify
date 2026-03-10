@@ -1,11 +1,11 @@
-#include "json_struct/json_struct.h"
+#include "structify/structify.h"
 #include <iostream>
 
 struct MyTestStruct
 {
     std::string name;
     unsigned age;
-    JS_OBJ(name, age);
+    STFY_OBJ(name, age);
 };
 
 int main()
@@ -14,7 +14,7 @@ int main()
     person.name="Jonh";
     person.age=23;
 
-    std::string person_json = JS::serializeStruct(person);
+    std::string person_json = STFY::serializeStruct(person);
     std::cout << person_json << std::endl;
 
     return 0;

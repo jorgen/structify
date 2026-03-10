@@ -20,11 +20,11 @@
  * OF THIS SOFTWARE.
  */
 
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 #include "assert.h"
 #include <string>
 
-inline int assert_token(const JS::Token &token, JS::Type name_type, std::string property, JS::Type value_type, std::string value)
+inline int assert_token(const STFY::Token &token, STFY::Type name_type, std::string property, STFY::Type value_type, std::string value)
 {
     if (token.name_type != name_type) {
         fprintf(stderr, "token.name_type is: %d, expected %d\n", int(token.name_type), int(name_type));

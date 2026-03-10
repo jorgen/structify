@@ -1,6 +1,6 @@
 #include <string>
 #include <vector>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 // Example showcasing relaxed JSON parsing rules suitable for config files:
 // - Comments using // syntax
@@ -43,7 +43,7 @@ struct DatabaseConfig
   int max_connections = 10;
   int timeout = 5;
 
-  JS_OBJ(name, user, max_connections, timeout);
+  STFY_OBJ(name, user, max_connections, timeout);
 };
 
 struct ServerConfig
@@ -55,13 +55,13 @@ struct ServerConfig
   std::string log_level;
   std::string log_file;
 
-  JS_OBJ(host, port, database, features, log_level, log_file);
+  STFY_OBJ(host, port, database, features, log_level, log_file);
 };
 
 int main()
 {
   ServerConfig config_obj;
-  JS::ParseContext context(config);
+  STFY::ParseContext context(config);
 
   // Enable relaxed parsing rules for config files
   context.tokenizer.allowAsciiType(true);           // Allow unquoted property names
@@ -69,7 +69,7 @@ int main()
   context.tokenizer.allowSuperfluousComma(true);    // Allow trailing commas
   context.tokenizer.allowComments(true);            // Allow // comments
 
-  if (context.parseTo(config_obj) != JS::Error::NoError)
+  if (context.parseTo(config_obj) != STFY::Error::NoError)
   {
     std::string errorStr = context.makeErrorString();
     fprintf(stderr, "Error parsing config: %s\n", errorStr.c_str());

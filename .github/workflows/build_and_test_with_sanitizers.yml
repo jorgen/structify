@@ -13,7 +13,7 @@ jobs:
         id: docker-build
         uses: ./.github/actions/docker-build-action
         with:
-          imageName: json_struct_sanitizer_docker:3
+          imageName: structify_sanitizer_docker:3
           dockerFile: docker/archlinux/Dockerfile
           user: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}

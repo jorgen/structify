@@ -1,5 +1,5 @@
 #include <string>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 const char car_json[] = R"json(
 {
@@ -18,8 +18,8 @@ const char sailboat_json[] = R"json(
 }
 )json";
 
-JS_ENUM(VehicleType, car, sailboat)
-JS_ENUM_DECLARE_STRING_PARSER(VehicleType)
+STFY_ENUM(VehicleType, car, sailboat)
+STFY_ENUM_DECLARE_STRING_PARSER(VehicleType)
 
 struct Car
 {
@@ -27,7 +27,7 @@ struct Car
   int wheels;
   bool electric;
   int engine_count;
-  JS_OBJ(type, wheels, electric, engine_count);
+  STFY_OBJ(type, wheels, electric, engine_count);
 };
 
 struct Sailboat
@@ -36,7 +36,7 @@ struct Sailboat
   double sail_area_m2;
   bool swimming_platform;
   int cabin_count;
-  JS_OBJ(type, sail_area_m2, swimming_platform, cabin_count);
+  STFY_OBJ(type, sail_area_m2, swimming_platform, cabin_count);
 };
 
 void handle_car(Car &car)
@@ -53,15 +53,15 @@ void handle_sailboat(Sailboat &sailboat)
 
 void handle_data(const char *data, size_t size)
 {
-  JS::Map map;
-  JS::ParseContext parseContext(data, size, map);
-  if (parseContext.error != JS::Error::NoError)
+  STFY::Map map;
+  STFY::ParseContext parseContext(data, size, map);
+  if (parseContext.error != STFY::Error::NoError)
   {
     fprintf(stderr, "Failed to parse Json:\n%s\n", parseContext.makeErrorString().c_str());
     return;
   }
   VehicleType vehicleType = map.castTo<VehicleType>("type", parseContext);
-  if (parseContext.error != JS::Error::NoError)
+  if (parseContext.error != STFY::Error::NoError)
   {
     fprintf(stderr, "Failed to extract type:\n%s\n", parseContext.makeErrorString().c_str());
     return;
@@ -72,7 +72,7 @@ void handle_data(const char *data, size_t size)
   {
     std::shared_ptr<int> foo;
     Car car = map.castTo<Car>(parseContext);
-    if (parseContext.error != JS::Error::NoError)
+    if (parseContext.error != STFY::Error::NoError)
     {
       //error handling 
     }
@@ -82,7 +82,7 @@ void handle_data(const char *data, size_t size)
   case VehicleType::sailboat:
     Sailboat sailboat;
     map.castToType(parseContext, sailboat);
-    if (parseContext.error != JS::Error::NoError)
+    if (parseContext.error != STFY::Error::NoError)
     {
       //error handling 
     }

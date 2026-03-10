@@ -1,17 +1,17 @@
 # **Structurize your JSON**
 
-[![CI](https://github.com/jorgen/json_struct/actions/workflows/ci.yml/badge.svg)](https://github.com/jorgen/json_struct/actions/workflows/ci.yml)
-[![ClusterFuzzLite PR fuzzing](https://github.com/jorgen/json_struct/actions/workflows/cflite_pr.yml/badge.svg)](https://github.com/jorgen/json_struct/actions/workflows/cflite_pr.yml)
+[![CI](https://github.com/jorgen/structify/actions/workflows/ci.yml/badge.svg)](https://github.com/jorgen/structify/actions/workflows/ci.yml)
+[![ClusterFuzzLite PR fuzzing](https://github.com/jorgen/structify/actions/workflows/cflite_pr.yml/badge.svg)](https://github.com/jorgen/structify/actions/workflows/cflite_pr.yml)
 
-json_struct is a single-header C++ library that parses JSON to structs/classes and serializes structs/classes back to JSON. With support for relaxed parsing rules, it's also excellent for configuration files and human-editable data formats.
+structify is a single-header C++ library that parses JSON to structs/classes and serializes structs/classes back to JSON. With support for relaxed parsing rules, it's also excellent for configuration files and human-editable data formats.
 
-**Getting Started:** Simply copy `json_struct.h` from the `include` folder into your project's include path.
+**Getting Started:** Simply copy `structify.h` from the `include` folder into your project's include path.
 
 **Requirements:** C++11 or newer. Tested on GCC, Clang, and Visual Studio 2015+.
 
 ## Quick Start
 
-json_struct automatically maps JSON to C++ structs by adding simple metadata declarations.
+structify automatically maps JSON to C++ structs by adding simple metadata declarations.
 
 ```json
 {
@@ -30,7 +30,7 @@ struct JsonObject
     std::string Two;
     double Three;
 
-    JS_OBJ(One, Two, Three);
+    STFY_OBJ(One, Two, Three);
 };
 ```
 
@@ -43,13 +43,13 @@ struct JsonObject
     std::string Two;
     double Three;
 };
-JS_OBJ_EXT(JsonObject, One, Two, Three);
+STFY_OBJ_EXT(JsonObject, One, Two, Three);
 ```
 
 **Parse JSON to struct:**
 
 ```c++
-JS::ParseContext context(json_data);
+STFY::ParseContext context(json_data);
 JsonObject obj;
 context.parseTo(obj);
 ```
@@ -57,14 +57,14 @@ context.parseTo(obj);
 **Serialize struct to JSON:**
 
 ```c++
-std::string pretty_json = JS::serializeStruct(obj);
+std::string pretty_json = STFY::serializeStruct(obj);
 // or
-std::string compact_json = JS::serializeStruct(obj, JS::SerializerOptions(JS::SerializerOptions::Compact));
+std::string compact_json = STFY::serializeStruct(obj, STFY::SerializerOptions(STFY::SerializerOptions::Compact));
 ```
 
 ## Relaxed Parsing for Config Files
 
-json_struct supports relaxed JSON parsing rules, making it ideal for configuration files and human-editable data. Enable optional features for a more forgiving syntax:
+structify supports relaxed JSON parsing rules, making it ideal for configuration files and human-editable data. Enable optional features for a more forgiving syntax:
 
 * **Comments** using `//` syntax
 * **Unquoted property names** and string values (supports `A-Z`, `a-z`, `0-9`, `_`, `-`, `.`, `/`)
@@ -89,7 +89,7 @@ json_struct supports relaxed JSON parsing rules, making it ideal for configurati
 
 **Enable relaxed parsing:**
 ```c++
-JS::ParseContext context(config_data);
+STFY::ParseContext context(config_data);
 context.tokenizer.allowComments(true);
 context.tokenizer.allowAsciiType(true);
 context.tokenizer.allowNewLineAsTokenDelimiter(true);
@@ -99,7 +99,7 @@ context.parseTo(config_obj);
 
 ## YAML Parsing
 
-json_struct has built-in YAML support - no external library needed. Enable YAML mode on the tokenizer and parse directly into the same C++ structs you use for JSON.
+structify has built-in YAML support - no external library needed. Enable YAML mode on the tokenizer and parse directly into the same C++ structs you use for JSON.
 
 **Supported YAML features:** nested mappings, sequences, block scalars (`|` and `>`), flow collections (`[...]`, `{...}`), quoted strings with escapes, comments, and document markers (`---`).
 
@@ -131,7 +131,7 @@ struct ServerSettings
   std::string host;
   int port = 0;
   int workers = 1;
-  JS_OBJ(host, port, workers);
+  STFY_OBJ(host, port, workers);
 };
 
 struct AppConfig
@@ -140,21 +140,21 @@ struct AppConfig
   ServerSettings server;
   std::vector<std::string> features;
   std::string description;
-  JS_OBJ(name, server, features, description);
+  STFY_OBJ(name, server, features, description);
 };
 
 AppConfig config;
-JS::ParseContext context;
+STFY::ParseContext context;
 context.tokenizer.allowYaml(true);
 context.tokenizer.addData(yaml_data, yaml_size);
 context.parseTo(config);
 ```
 
-See the full [YAML parsing example](https://github.com/jorgen/json_struct/blob/master/examples/15_yaml_parsing.cpp) for a complete working program with nested objects, block scalars, and lists.
+See the full [YAML parsing example](https://github.com/jorgen/structify/blob/master/examples/15_yaml_parsing.cpp) for a complete working program with nested objects, block scalars, and lists.
 
 ## Dynamic JSON with Maps
 
-When the JSON structure depends on runtime values, you can parse into a `JS::Map` first, inspect the data, then dispatch to the appropriate type. For example, consider JSON describing different vehicle types:
+When the JSON structure depends on runtime values, you can parse into a `STFY::Map` first, inspect the data, then dispatch to the appropriate type. For example, consider JSON describing different vehicle types:
 ```json
 {
   "type" : "car",
@@ -178,15 +178,15 @@ Parse into a map, query for the type field, then convert to the specific struct:
 ```c++
 void handle_data(const char *data, size_t size)
 {
-  JS::Map map;
-  JS::ParseContext parseContext(data, size, map);
-  if (parseContext.error != JS::Error::NoError)
+  STFY::Map map;
+  STFY::ParseContext parseContext(data, size, map);
+  if (parseContext.error != STFY::Error::NoError)
   {
     fprintf(stderr, "Failed to parse Json:\n%s\n", parseContext.makeErrorString().c_str());
     return;
   }
   VehicleType vehicleType = map.castTo<VehicleType>("type", parseContext);
-  if (parseContext.error != JS::Error::NoError)
+  if (parseContext.error != STFY::Error::NoError)
   {
     fprintf(stderr, "Failed to extract type:\n%s\n", parseContext.makeErrorString().c_str());
     return;
@@ -196,7 +196,7 @@ void handle_data(const char *data, size_t size)
   case VehicleType::car:
   {
     Car car = map.castTo<Car>(parseContext);
-    if (parseContext.error != JS::Error::NoError)
+    if (parseContext.error != STFY::Error::NoError)
     {
       //error handling 
     }
@@ -206,7 +206,7 @@ void handle_data(const char *data, size_t size)
   case VehicleType::sailboat:
     Sailboat sailboat;
     map.castToType(parseContext, sailboat);
-    if (parseContext.error != JS::Error::NoError)
+    if (parseContext.error != STFY::Error::NoError)
     {
       //error handling 
     }
@@ -216,7 +216,7 @@ void handle_data(const char *data, size_t size)
 }
 ```
 
-The `JS::Map` allows querying and extracting individual fields before converting the entire object. Two casting styles are available:
+The `STFY::Map` allows querying and extracting individual fields before converting the entire object. Two casting styles are available:
 ```c++
     Car car = map.castTo<Car>(parseContext);
     // or
@@ -226,7 +226,7 @@ The `JS::Map` allows querying and extracting individual fields before converting
 
 ## Advanced Macro Usage
 
-The `JS_OBJ` macro adds a static metadata object to your struct without affecting its size or semantics. For more control, use the verbose `JS_OBJECT` macro with explicit member declarations:
+The `STFY_OBJ` macro adds a static metadata object to your struct without affecting its size or semantics. For more control, use the verbose `STFY_OBJECT` macro with explicit member declarations:
 ```c++
 struct JsonObject
 {
@@ -234,9 +234,9 @@ struct JsonObject
     std::string Two;
     double Three;
 
-    JS_OBJECT(JS_MEMBER(One)
-            , JS_MEMBER(Two)
-            , JS_MEMBER(Three));
+    STFY_OBJECT(STFY_MEMBER(One)
+            , STFY_MEMBER(Two)
+            , STFY_MEMBER(Three));
 };
 ```
 
@@ -248,23 +248,23 @@ struct JsonObject
     std::string Two;
     double Three;
 
-    JS_OBJECT(JS_MEMBER(One)
-            , JS_MEMBER_WITH_NAME(Two, "TheTwo")
-            , JS_MEMBER_ALIASES(Three, "TheThree", "the_three"));
+    STFY_OBJECT(STFY_MEMBER(One)
+            , STFY_MEMBER_WITH_NAME(Two, "TheTwo")
+            , STFY_MEMBER_ALIASES(Three, "TheThree", "the_three"));
 };
 ```
 
-* `JS_MEMBER_WITH_NAME` - Uses only the supplied name, ignoring the member name
-* `JS_MEMBER_ALIASES` - Checks aliases after the primary member name
+* `STFY_MEMBER_WITH_NAME` - Uses only the supplied name, ignoring the member name
+* `STFY_MEMBER_ALIASES` - Checks aliases after the primary member name
 
-**Note:** Don't mix `JS_MEMBER` macros with `JS_OBJ` as it will double-apply the macro.
+**Note:** Don't mix `STFY_MEMBER` macros with `STFY_OBJ` as it will double-apply the macro.
 
 ## Custom Type Handlers
 
-For types that don't fit the standard object model (e.g., custom serialization logic), implement a `TypeHandler` specialization. The `JS::ParseContext` looks for template specializations:
+For types that don't fit the standard object model (e.g., custom serialization logic), implement a `TypeHandler` specialization. The `STFY::ParseContext` looks for template specializations:
 
 ```c++
-namespace JS {
+namespace STFY {
     template<typename T>
     struct TypeHandler;
 }
@@ -290,7 +290,7 @@ namespace JS {
 **Custom type handler example:**
 
 ```c++
-namespace JS {
+namespace STFY {
 template<>
 struct TypeHandler<uint32_t>
 {
@@ -321,8 +321,8 @@ This gives complete control over serialization/deserialization and can represent
 
 ## Examples and Tests
 
-* [Examples](https://github.com/jorgen/json_struct/tree/master/examples) - See practical usage patterns
-* [Unit Tests](https://github.com/jorgen/json_struct/tree/master/tests) - Comprehensive test coverage
+* [Examples](https://github.com/jorgen/structify/tree/master/examples) - See practical usage patterns
+* [Unit Tests](https://github.com/jorgen/structify/tree/master/tests) - Comprehensive test coverage
 
 ## Quality Assurance
 

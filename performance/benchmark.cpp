@@ -1,6 +1,6 @@
 #include "assert.h"
 #include "generated.json.h"
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 #include <chrono>
 
 #include "catch2/catch_all.hpp"
@@ -14,38 +14,38 @@ TEST_CASE("Benchmarks", "[performance]")
 {
   BENCHMARK("Tokenizer_SmallObject")
   {
-    JS::Tokenizer tokenizer;
+    STFY::Tokenizer tokenizer;
     SmallPerson smallPerson;
     tokenizer.addData(generatedJsonObject, sizeof(generatedJsonObject)-1);
 
-    JS::Token token;
-    JS::Error error = JS::Error::NoError;
+    STFY::Token token;
+    STFY::Error error = STFY::Error::NoError;
     int object_count = 0;
     do
     {
       error = tokenizer.nextToken(token);
-      if (token.value_type == JS::Type::ObjectStart)
+      if (token.value_type == STFY::Type::ObjectStart)
       {
         object_count++;
       }
-      else if (token.value_type == JS::Type::ObjectEnd)
+      else if (token.value_type == STFY::Type::ObjectEnd)
       {
         object_count--;
       }
-      else if (object_count == 1 && token.value_type == JS::Type::String && token.name.size == 4 &&
+      else if (object_count == 1 && token.value_type == STFY::Type::String && token.name.size == 4 &&
                memcmp(token.name.data, "name", 4) == 0)
       {
         smallPerson.name = std::string(token.value.data, token.value.size);
       }
-    } while (object_count > 0 && error == JS::Error::NoError);
+    } while (object_count > 0 && error == STFY::Error::NoError);
 
-    if (error != JS::Error::NoError)
+    if (error != STFY::Error::NoError)
       fprintf(stderr, "Failed to parse document\n");
     return smallPerson;
   };
-  BENCHMARK("JsonStruct_SmallStruct_Object")
+  BENCHMARK("Structify_SmallStruct_Object")
   {
-    JS::ParseContext context(generatedJsonObject, sizeof(generatedJsonObject)-1);
+    STFY::ParseContext context(generatedJsonObject, sizeof(generatedJsonObject)-1);
     SmallPerson person;
     context.parseTo(person);
     return person;
@@ -106,9 +106,9 @@ TEST_CASE("Benchmarks", "[performance]")
   //   return smallPerson;
   // };
 
-  BENCHMARK("JsonStruct_FullStruct_Object")
+  BENCHMARK("Structify_FullStruct_Object")
   {
-    JS::ParseContext context(generatedJsonObject, sizeof(generatedJsonObject)-1);
+    STFY::ParseContext context(generatedJsonObject, sizeof(generatedJsonObject)-1);
     JPerson person;
     context.parseTo(person);
     return person;
@@ -221,44 +221,44 @@ TEST_CASE("Benchmarks", "[performance]")
 
   BENCHMARK("Tokenizer_SmallStruct_Array")
   {
-    JS::Tokenizer tokenizer;
+    STFY::Tokenizer tokenizer;
     SmallPerson smallPerson;
     tokenizer.addData(generatedJsonArray, sizeof(generatedJsonArray)-1);
 
-    JS::Token token;
-    JS::Error error = JS::Error::NoError;
+    STFY::Token token;
+    STFY::Error error = STFY::Error::NoError;
     int array_size = 0;
     int max_size = 0;
     do
     {
       error = tokenizer.nextToken(token);
-      if (token.value_type == JS::Type::ArrayStart)
+      if (token.value_type == STFY::Type::ArrayStart)
       {
         array_size++;
       }
-      else if (token.value_type == JS::Type::ArrayEnd)
+      else if (token.value_type == STFY::Type::ArrayEnd)
       {
         array_size--;
       }
-      else if (token.value_type == JS::Type::ObjectStart && array_size == 1)
+      else if (token.value_type == STFY::Type::ObjectStart && array_size == 1)
       {
         max_size++;
       }
-      else if (max_size == 2 && array_size == 1 && token.value_type == JS::Type::String && token.name.size == 4 &&
+      else if (max_size == 2 && array_size == 1 && token.value_type == STFY::Type::String && token.name.size == 4 &&
                memcmp(token.name.data, "name", 4) == 0)
       {
         smallPerson.name = std::string(token.value.data, token.value.size);
       }
-    } while (array_size > 0 && error == JS::Error::NoError);
+    } while (array_size > 0 && error == STFY::Error::NoError);
 
-    if (error != JS::Error::NoError)
+    if (error != STFY::Error::NoError)
       fprintf(stderr, "Failed to parse document\n");
     return smallPerson;
   };
 
-  BENCHMARK("JsonStruct_SmallStruct_Array")
+  BENCHMARK("Structify_SmallStruct_Array")
   {
-    JS::ParseContext context(generatedJsonArray, sizeof(generatedJsonArray)-1);
+    STFY::ParseContext context(generatedJsonArray, sizeof(generatedJsonArray)-1);
     std::vector<SmallPerson> people;
     context.parseTo(people);
     return people;
@@ -317,9 +317,9 @@ TEST_CASE("Benchmarks", "[performance]")
   //   return people;
   // };
   
-  BENCHMARK("JsonStruct_FullStruct_Array")
+  BENCHMARK("Structify_FullStruct_Array")
   {
-    JS::ParseContext context(generatedJsonArray, sizeof(generatedJsonArray)-1);
+    STFY::ParseContext context(generatedJsonArray, sizeof(generatedJsonArray)-1);
     std::vector<JPerson> people;
     context.parseTo(people);
     return people;

@@ -1,15 +1,15 @@
 #include <stdio.h>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
-JS_ENUM(Color, Red , Green , Blue, Yellow4 , Purple )
+STFY_ENUM(Color, Red , Green , Blue, Yellow4 , Purple )
 
 struct ColorData
 {
     Color color;
 
-    JS_OBJ(color);
+    STFY_OBJ(color);
 };
-JS_ENUM_DECLARE_STRING_PARSER(Color)
+STFY_ENUM_DECLARE_STRING_PARSER(Color)
 
 const char json[] = R"json({
     "color" : "Green"
@@ -18,8 +18,8 @@ const char json[] = R"json({
 int main()
 {
     ColorData dataStruct;
-    JS::ParseContext parseContext(json);
-    if (parseContext.parseTo(dataStruct) != JS::Error::NoError)
+    STFY::ParseContext parseContext(json);
+    if (parseContext.parseTo(dataStruct) != STFY::Error::NoError)
     {
         std::string errorStr = parseContext.makeErrorString();
         fprintf(stderr, "Error parsing struct %s\n", errorStr.c_str());

@@ -1,4 +1,4 @@
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 #include "catch2/catch_all.hpp"
 
@@ -10,43 +10,43 @@ struct SimpleStruct
   std::string name;
   int age;
   float score;
-  JS_OBJ(name, age, score);
+  STFY_OBJ(name, age, score);
 };
 
 struct NestedInner
 {
   std::string street;
   std::string city;
-  JS_OBJ(street, city);
+  STFY_OBJ(street, city);
 };
 
 struct NestedOuter
 {
   std::string name;
   NestedInner address;
-  JS_OBJ(name, address);
+  STFY_OBJ(name, address);
 };
 
 struct WithVector
 {
   std::string name;
   std::vector<int> scores;
-  JS_OBJ(name, scores);
+  STFY_OBJ(name, scores);
 };
 
 struct WithBooleans
 {
   bool enabled;
   bool active;
-  JS_OBJ(enabled, active);
+  STFY_OBJ(enabled, active);
 };
 
 struct WithOptional
 {
   std::string name;
-  JS::Optional<int> age;
-  JS::Optional<std::string> email;
-  JS_OBJ(name, age, email);
+  STFY::Optional<int> age;
+  STFY::Optional<std::string> email;
+  STFY_OBJ(name, age, email);
 };
 
 struct MixedStruct
@@ -55,7 +55,7 @@ struct MixedStruct
   int age;
   bool active;
   std::vector<std::string> hobbies;
-  JS_OBJ(name, age, active, hobbies);
+  STFY_OBJ(name, age, active, hobbies);
 };
 
 // Helper to build CBOR from byte list
@@ -84,14 +84,14 @@ TEST_CASE("cbor_parse_simple_struct", "[cbor][struct]")
     0xFA, 0x42, 0xBF, 0x00, 0x00
   });
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowCbor(true);
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   SimpleStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
   REQUIRE(s.age == 30);
   REQUIRE(s.score == Catch::Approx(95.5f));
@@ -120,14 +120,14 @@ TEST_CASE("cbor_parse_nested_struct", "[cbor][struct]")
       0x63, 'N', 'Y', 'C'
   });
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowCbor(true);
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   NestedOuter s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Alice");
   REQUIRE(s.address.street == "Main St");
   REQUIRE(s.address.city == "NYC");
@@ -148,14 +148,14 @@ TEST_CASE("cbor_parse_with_vector", "[cbor][struct]")
     0x83, 0x0A, 0x14, 0x18, 0x1E
   });
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowCbor(true);
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithVector s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Bob");
   REQUIRE(s.scores.size() == 3);
   REQUIRE(s.scores[0] == 10);
@@ -174,14 +174,14 @@ TEST_CASE("cbor_parse_booleans", "[cbor][struct]")
     0xF4  // false
   });
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowCbor(true);
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithBooleans s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.enabled == true);
   REQUIRE(s.active == false);
 }
@@ -199,14 +199,14 @@ TEST_CASE("cbor_parse_optional_present", "[cbor][struct]")
     0x6F, 'e', 'v', 'e', '@', 'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm'
   });
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowCbor(true);
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithOptional s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Eve");
   REQUIRE(s.age.data == 25);
   REQUIRE(s.email.data == "eve@example.com");
@@ -221,14 +221,14 @@ TEST_CASE("cbor_parse_optional_missing", "[cbor][struct]")
     0x63, 'E', 'v', 'e'
   });
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowCbor(true);
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithOptional s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Eve");
   // Optional members not in CBOR data remain default-initialized
   REQUIRE(s.age.data == 0);
@@ -260,14 +260,14 @@ TEST_CASE("cbor_parse_mixed_struct", "[cbor][struct]")
       0x66, 'c', 'o', 'd', 'i', 'n', 'g'
   });
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowCbor(true);
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   MixedStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Charlie");
   REQUIRE(s.age == 35);
   REQUIRE(s.active == true);
@@ -289,14 +289,14 @@ TEST_CASE("cbor_parse_negative_int", "[cbor][struct]")
     0xFA, 0x00, 0x00, 0x00, 0x00 // float32(0.0)
   });
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowCbor(true);
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   SimpleStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "test");
   REQUIRE(s.age == -5);
   REQUIRE(s.score == Catch::Approx(0.0f));
@@ -317,14 +317,14 @@ TEST_CASE("cbor_parse_float64_value", "[cbor][struct]")
     0xFB, 0x40, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 // float64(3.5)
   });
 
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowCbor(true);
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   SimpleStruct s;
   context.parseTo(s);
 
-  REQUIRE(context.error == JS::Error::NoError);
+  REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "pi");
   REQUIRE(s.age == 0);
   REQUIRE(s.score == Catch::Approx(3.5f));

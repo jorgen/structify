@@ -2,7 +2,7 @@
 //THIS IS A VERY ADVANCED SAMPLE
 //PLEASE LOOK AT THE OTHER SAMPLES FIRST
 #include <string>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 const char json[] = R"json(
 {
@@ -23,7 +23,7 @@ struct FunctionBArguments
 {
     float paramA;
     std::string paramB;
-    JS_OBJ(paramA, paramB);
+    STFY_OBJ(paramA, paramB);
 };
 
 struct FunctionBReturn
@@ -32,7 +32,7 @@ struct FunctionBReturn
     std::string functionBReturnB;
     double functionBReturnC[3];
 
-    JS_OBJ(functionBReturnA, functionBReturnB, functionBReturnC);
+    STFY_OBJ(functionBReturnA, functionBReturnB, functionBReturnC);
 };
 
 struct FunctionCArguments
@@ -40,7 +40,7 @@ struct FunctionCArguments
     int this_function;
     bool can_fail_at_runtime;
 
-    JS_OBJ(this_function, can_fail_at_runtime);
+    STFY_OBJ(this_function, can_fail_at_runtime);
 };
 
 struct FunctionCReturn
@@ -49,7 +49,7 @@ struct FunctionCReturn
     int type_will_not = 0;
     int be_serialized = 0;
     int on_failure = 0;
-    JS_OBJ(this_return, type_will_not, be_serialized, on_failure);
+    STFY_OBJ(this_return, type_will_not, be_serialized, on_failure);
 };
 
 struct JsonFunctions
@@ -71,12 +71,12 @@ struct JsonFunctions
         return ret;
     }
 
-    FunctionCReturn function_c(const FunctionCArguments &arg, JS::CallFunctionErrorContext &context)
+    FunctionCReturn function_c(const FunctionCArguments &arg, STFY::CallFunctionErrorContext &context)
     {
         (void)arg;
         fprintf(stderr, "Function c was called and its going to fail miserably\n");
         FunctionCReturn ret;
-        context.setError(JS::Error::UserDefinedErrors, "Making the error"
+        context.setError(STFY::Error::UserDefinedErrors, "Making the error"
                          " context have failure marked so that it will not"
                          " serialize the return type");
         return ret;
@@ -87,16 +87,16 @@ struct JsonFunctions
         fprintf(stderr, "Function d shows that just simple types can be used - %d\n", arg);
         return arg;
     }
-    JS_FUNC_OBJ(function_a, function_b, function_c, function_d);
+    STFY_FUNC_OBJ(function_a, function_b, function_c, function_d);
 };
 
 int main()
 {
     JsonFunctions functionObject;
     std::string output;
-    JS::DefaultCallFunctionContext callFunctionContext(json, output);
+    STFY::DefaultCallFunctionContext callFunctionContext(json, output);
     callFunctionContext.stop_execute_on_fail = false;
-    if (callFunctionContext.callFunctions(functionObject) != JS::Error::NoError)
+    if (callFunctionContext.callFunctions(functionObject) != STFY::Error::NoError)
     {
         std::string errorStr = callFunctionContext.parse_context.makeErrorString();
         fprintf(stderr, "Error parsing struct %s\n", errorStr.c_str());
@@ -104,7 +104,7 @@ int main()
 
     for (auto &executed : callFunctionContext.execution_list)
     {
-        std::string executionStateJson = JS::serializeStruct(executed);
+        std::string executionStateJson = STFY::serializeStruct(executed);
         fprintf(stderr, "###\n%s\n", executionStateJson.c_str());
     }
 

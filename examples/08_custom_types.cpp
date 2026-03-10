@@ -1,14 +1,14 @@
 #include <string>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 struct Vec3
 {
     double data[3];
 };
 
-//We have to define a specialisation of the struct JS::TypeHandler
+//We have to define a specialisation of the struct STFY::TypeHandler
 //This struct handle how types populate c++ types and how c++ types are serialized
-namespace JS
+namespace STFY
 {
 template<>
 struct TypeHandler<Vec3>
@@ -39,14 +39,14 @@ struct JsonData
     std::string key;
     Vec3 vec;
 
-    JS_OBJ(key, vec);
+    STFY_OBJ(key, vec);
 };
 
 int main()
 {
     JsonData dataStruct;
-    JS::ParseContext parseContext(json);
-    if (parseContext.parseTo(dataStruct) != JS::Error::NoError)
+    STFY::ParseContext parseContext(json);
+    if (parseContext.parseTo(dataStruct) != STFY::Error::NoError)
     {
         std::string errorStr = parseContext.makeErrorString();
         fprintf(stderr, "Error parsing struct %s\n", errorStr.c_str());

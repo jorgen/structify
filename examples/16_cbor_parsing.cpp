@@ -1,10 +1,10 @@
 #include <string>
 #include <vector>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 // Example: Parsing CBOR binary data into C++ structs.
 //
-// json_struct's tokenizer supports CBOR (RFC 8949) natively - no external
+// structify's tokenizer supports CBOR (RFC 8949) natively - no external
 // library needed. Just enable CBOR mode and parse directly into your structs,
 // the same way you would with JSON or YAML.
 
@@ -14,7 +14,7 @@ struct ServerSettings
   int port = 0;
   int workers = 1;
 
-  JS_OBJ(host, port, workers);
+  STFY_OBJ(host, port, workers);
 };
 
 struct AppConfig
@@ -25,7 +25,7 @@ struct AppConfig
   bool debug = false;
   std::vector<std::string> features;
 
-  JS_OBJ(name, version, server, debug, features);
+  STFY_OBJ(name, version, server, debug, features);
 };
 
 int main()
@@ -75,11 +75,11 @@ int main()
   };
 
   AppConfig config;
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowCbor(true);
   context.tokenizer.addData((const char *)cbor_data, sizeof(cbor_data));
 
-  if (context.parseTo(config) != JS::Error::NoError)
+  if (context.parseTo(config) != STFY::Error::NoError)
   {
     std::string errorStr = context.makeErrorString();
     fprintf(stderr, "Error parsing CBOR: %s\n", errorStr.c_str());

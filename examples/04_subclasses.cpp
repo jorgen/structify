@@ -1,5 +1,5 @@
 #include <string>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 const char json[] = R"json(
 {
@@ -17,7 +17,7 @@ struct JsonData
     int number;
     bool boolean;
 
-    JS_OBJ(key, number, boolean);
+    STFY_OBJ(key, number, boolean);
 };
 
 struct SubClass : public JsonData
@@ -25,14 +25,14 @@ struct SubClass : public JsonData
     std::string additional;
     double data;
 
-    JS_OBJ_SUPER(JS_SUPER(JsonData), additional, data);
+    STFY_OBJ_SUPER(STFY_SUPER(JsonData), additional, data);
 };
 
 int main()
 {
     SubClass dataStruct;
-    JS::ParseContext parseContext(json);
-    if (parseContext.parseTo(dataStruct) != JS::Error::NoError)
+    STFY::ParseContext parseContext(json);
+    if (parseContext.parseTo(dataStruct) != STFY::Error::NoError)
     {
         std::string errorStr = parseContext.makeErrorString();
         fprintf(stderr, "Error parsing struct %s\n", errorStr.c_str());

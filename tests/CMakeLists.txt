@@ -1,4 +1,4 @@
-include_directories(${JSON_STRUCT_INCLUDE_DIR})
+include_directories(${STRUCTIFY_INCLUDE_DIR})
 include_directories(SYSTEM ${float_tools_SOURCE_DIR}/include)
 
 include(Catch)
@@ -13,51 +13,51 @@ cmrc_add_resource_library(
     )
 
 set(unit_test_sources
-                           json-struct-test.cpp
-                           json-struct-test-new.cpp
-                           json-struct-external.cpp
-                           json-struct-big-test.cpp
-                           json-struct-verify.cpp
-                           json-struct-serialize-tuple.cpp
-                           json-struct-aliases-test.cpp
-                           json-struct-serialize-test.cpp
-                           json-struct-diff.cpp
-                           json-struct-fail.cpp
-                           json-struct-float.cpp
-                           json-mias-mat.cpp
-                           json-nullable-test.cpp
-                           json-string-with-nullterminator-test.cpp
-                           json-tokenizer-fail-test.cpp
-                           json-tokenizer-partial-test.cpp
-                           json-tokenizer-test.cpp
-                           json-tokenizer-comments-test.cpp
-                           json-struct-comments-test.cpp
-                           json-function-test.cpp
-                           json-function-test-new.cpp
-                           json-function-external-test.cpp
-                           json-function-external-test-new.cpp
-                           json-function-error-test.cpp
-                           json-scope.cpp
+                           structify-test.cpp
+                           structify-test-new.cpp
+                           structify-external.cpp
+                           structify-big-test.cpp
+                           structify-verify.cpp
+                           structify-serialize-tuple.cpp
+                           structify-aliases-test.cpp
+                           structify-serialize-test.cpp
+                           structify-diff.cpp
+                           structify-fail.cpp
+                           structify-float.cpp
+                           structify-mias-mat.cpp
+                           structify-nullable-test.cpp
+                           structify-string-with-nullterminator-test.cpp
+                           structify-tokenizer-fail-test.cpp
+                           structify-tokenizer-partial-test.cpp
+                           structify-tokenizer-test.cpp
+                           structify-tokenizer-comments-test.cpp
+                           structify-comments-test.cpp
+                           structify-function-test.cpp
+                           structify-function-test-new.cpp
+                           structify-function-external-test.cpp
+                           structify-function-external-test-new.cpp
+                           structify-function-error-test.cpp
+                           structify-scope.cpp
                            members-size-test.cpp
                            compiler-test.cpp
                            meta-for-tokens.cpp
-                           json-enum-test.cpp
-                           json-meta-test.cpp
-                           json-copy-test.cpp
+                           structify-enum-test.cpp
+                           structify-meta-test.cpp
+                           structify-copy-test.cpp
                            multi-compilation-units-1.cpp
                            multi-compilation-units-2.cpp
                            multi-compilation-units-main.cpp
-                           json-reformat.cpp
-                           json-unordered-map.cpp
-                           json-struct-utf8.cpp
-                           json-struct-escape.cpp
-                           json-struct-error-string.cpp
-                           json-struct-polymorphic-map.cpp
-                           json-struct-array-varlength.cpp
-                           json-struct-stdint.cpp
-                           json-struct-nested.cpp
-                           json-struct-map-typehandler.cpp
-                           json-tokenizer-invalid-json.cpp
+                           structify-reformat.cpp
+                           structify-unordered-map.cpp
+                           structify-utf8.cpp
+                           structify-escape.cpp
+                           structify-error-string.cpp
+                           structify-polymorphic-map.cpp
+                           structify-array-varlength.cpp
+                           structify-stdint.cpp
+                           structify-nested.cpp
+                           structify-map-typehandler.cpp
+                           structify-tokenizer-invalid-json.cpp
                            yaml-tokenizer-test.cpp
                            yaml-struct-test.cpp
                            cbor-tokenizer-test.cpp
@@ -67,8 +67,8 @@ set(unit_test_sources
 add_executable(unit-tests ${unit_test_sources})
 set_compiler_flags_for_target(unit-tests)
 target_link_libraries(unit-tests PUBLIC Catch2::Catch2WithMain external_json::rc)
-if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0" AND NOT JSON_STRUCT_OPT_DISABLE_PCH)
-  target_precompile_headers(unit-tests PRIVATE ../include/json_struct/json_struct.h)
+if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0" AND NOT STRUCTIFY_OPT_DISABLE_PCH)
+  target_precompile_headers(unit-tests PRIVATE ../include/structify/structify.h)
 endif()
 catch_discover_tests(unit-tests)
 
@@ -90,9 +90,9 @@ else()
 endif()
 
 if ("${CMAKE_CXX_COMPILE_FEATURES}" MATCHES ".*cxx_std_17.*")
-  add_executable(unit-tests-cxx17 json-optional.cpp ${unit_test_sources})
+  add_executable(unit-tests-cxx17 structify-optional.cpp ${unit_test_sources})
   if (NOT MSVC OR (MSVC_VERSION GREATER 1900))
-    target_sources(unit-tests-cxx17 PRIVATE json-timepoint.cpp)
+    target_sources(unit-tests-cxx17 PRIVATE structify-timepoint.cpp)
   endif()
   set_compiler_flags_for_target(unit-tests-cxx17)
   set_property(TARGET unit-tests-cxx17 PROPERTY CXX_STANDARD 17)
@@ -101,14 +101,14 @@ if ("${CMAKE_CXX_COMPILE_FEATURES}" MATCHES ".*cxx_std_17.*")
   catch_discover_tests(unit-tests-cxx17)
 endif()
 
-#add_executable(unit-tests-experimental json-struct-array-varlength.cpp)
+#add_executable(unit-tests-experimental structify-array-varlength.cpp)
 #target_link_libraries(unit-tests-experimental PRIVATE catch_main)
 
 if ("${CMAKE_CXX_COMPILE_FEATURES}" MATCHES ".*cxx_std_17.*")
   add_executable(yaml-suite-tests yaml-suite-test.cpp)
   set_property(TARGET yaml-suite-tests PROPERTY CXX_STANDARD 17)
   target_compile_features(yaml-suite-tests PUBLIC cxx_std_17)
-  target_include_directories(yaml-suite-tests PRIVATE ${JSON_STRUCT_INCLUDE_DIR})
+  target_include_directories(yaml-suite-tests PRIVATE ${STRUCTIFY_INCLUDE_DIR})
   target_include_directories(yaml-suite-tests SYSTEM PRIVATE ${float_tools_SOURCE_DIR}/include)
   target_compile_definitions(yaml-suite-tests PRIVATE
     YAML_TEST_SUITE_DIR="${yaml_test_suite_SOURCE_DIR}")

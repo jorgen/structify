@@ -20,7 +20,7 @@
  * OF THIS SOFTWARE.
  */
 
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 #include "catch2/catch_all.hpp"
 
@@ -30,54 +30,54 @@ namespace
 struct A
 {
   int a;
-  JS_OBJECT(JS_MEMBER(a));
+  STFY_OBJECT(STFY_MEMBER(a));
 };
 
 struct B : public A
 {
   float b;
-  JS_OBJECT_WITH_SUPER(JS_SUPER_CLASSES(JS_SUPER_CLASS(A)), JS_MEMBER(b));
+  STFY_OBJECT_WITH_SUPER(STFY_SUPER_CLASSES(STFY_SUPER_CLASS(A)), STFY_MEMBER(b));
 };
 
 struct D
 {
   unsigned char d;
-  JS_OBJECT(JS_MEMBER(d));
+  STFY_OBJECT(STFY_MEMBER(d));
 };
 
 struct E : public D
 {
   double e;
-  JS_OBJECT_WITH_SUPER(JS_SUPER_CLASSES(JS_SUPER_CLASS(D)), JS_MEMBER(e));
+  STFY_OBJECT_WITH_SUPER(STFY_SUPER_CLASSES(STFY_SUPER_CLASS(D)), STFY_MEMBER(e));
 };
 
 struct F : public E
 {
   short f;
-  JS_OBJECT_WITH_SUPER(JS_SUPER_CLASSES(JS_SUPER_CLASS(E)), JS_MEMBER(f));
+  STFY_OBJECT_WITH_SUPER(STFY_SUPER_CLASSES(STFY_SUPER_CLASS(E)), STFY_MEMBER(f));
 };
 struct G
 {
   char g;
-  JS_OBJECT(JS_MEMBER(g));
+  STFY_OBJECT(STFY_MEMBER(g));
 };
 
 struct Subclass : public B, public F, public G
 {
   unsigned int h;
-  JS_OBJECT_WITH_SUPER(JS_SUPER_CLASSES(JS_SUPER_CLASS(B), JS_SUPER_CLASS(F), JS_SUPER_CLASS(G)), JS_MEMBER(h));
+  STFY_OBJECT_WITH_SUPER(STFY_SUPER_CLASSES(STFY_SUPER_CLASS(B), STFY_SUPER_CLASS(F), STFY_SUPER_CLASS(G)), STFY_MEMBER(h));
 };
 
-TEST_CASE("members_size", "[json_struct]")
+TEST_CASE("members_size", "[structify]")
 {
-  size_t member_count = JS::Internal::memberCount<Subclass, 0>();
+  size_t member_count = STFY::Internal::memberCount<Subclass, 0>();
   REQUIRE(member_count == 7);
-  int array[JS::Internal::memberCount<Subclass, 0>()];
-  for (size_t i = 0; i < JS::Internal::memberCount<Subclass, 0>(); i++)
+  int array[STFY::Internal::memberCount<Subclass, 0>()];
+  for (size_t i = 0; i < STFY::Internal::memberCount<Subclass, 0>(); i++)
   {
     array[i] = static_cast<int>(i);
   }
-  for (int i = 0; i < int(JS::Internal::memberCount<Subclass, 0>()); i++)
+  for (int i = 0; i < int(STFY::Internal::memberCount<Subclass, 0>()); i++)
   {
     REQUIRE(array[i] == i);
   }

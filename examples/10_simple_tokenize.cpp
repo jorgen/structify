@@ -3,7 +3,7 @@
 #include <string>
 #include <cstring>
 
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 const char json[] = R"json(
 {
@@ -24,30 +24,30 @@ int main()
     std::string key;
     int number;
     bool boolean;
-    JS::Error error;
-    JS::Tokenizer tokenizer;
+    STFY::Error error;
+    STFY::Tokenizer tokenizer;
     tokenizer.allowComments(true);  // Enable comment support
-    JS::Token token;
+    STFY::Token token;
     tokenizer.addData(json);
     error = tokenizer.nextToken(token);
-    if (token.value_type == JS::Type::ObjectStart) {
+    if (token.value_type == STFY::Type::ObjectStart) {
         error = tokenizer.nextToken(token);
-        if (error != JS::Error::NoError)
+        if (error != STFY::Error::NoError)
             exit(1);
         key = std::string(token.value.data, token.value.size);
         error = tokenizer.nextToken(token);
-        if (error != JS::Error::NoError)
+        if (error != STFY::Error::NoError)
             exit(1);
         char *outpointer;
         number = strtol(token.value.data,
                         &outpointer,
                         10);
         error = tokenizer.nextToken(token);
-        if (error != JS::Error::NoError)
+        if (error != STFY::Error::NoError)
             exit(1);
         boolean = std::string(token.value.data, token.value.size) == "true";
         error = tokenizer.nextToken(token);
-        if (error != JS::Error::NoError)
+        if (error != STFY::Error::NoError)
             exit(1);
         fprintf(stdout, "Parsed data %s - %d - %d\n", key.c_str(), number, boolean);
     }

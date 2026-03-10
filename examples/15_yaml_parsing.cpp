@@ -1,10 +1,10 @@
 #include <string>
 #include <vector>
-#include <json_struct/json_struct.h>
+#include <structify/structify.h>
 
 // Example: Parsing a YAML configuration file into C++ structs.
 //
-// json_struct's tokenizer supports YAML natively - no external YAML
+// structify's tokenizer supports YAML natively - no external YAML
 // library needed. Just enable YAML mode and parse directly into your
 // structs, the same way you would with JSON.
 
@@ -45,7 +45,7 @@ struct ServerSettings
   int port = 0;
   int workers = 1;
 
-  JS_OBJ(host, port, workers);
+  STFY_OBJ(host, port, workers);
 };
 
 struct DatabaseSettings
@@ -55,7 +55,7 @@ struct DatabaseSettings
   std::string name;
   int max_connections = 10;
 
-  JS_OBJ(host, port, name, max_connections);
+  STFY_OBJ(host, port, name, max_connections);
 };
 
 struct AppConfig
@@ -68,17 +68,17 @@ struct AppConfig
   std::string description;
   std::string tls_cert;
 
-  JS_OBJ(name, version, server, database, features, description, tls_cert);
+  STFY_OBJ(name, version, server, database, features, description, tls_cert);
 };
 
 int main()
 {
   AppConfig config;
-  JS::ParseContext context;
+  STFY::ParseContext context;
   context.tokenizer.allowYaml(true);
   context.tokenizer.addData(yaml_config, sizeof(yaml_config) - 1);
 
-  if (context.parseTo(config) != JS::Error::NoError)
+  if (context.parseTo(config) != STFY::Error::NoError)
   {
     std::string errorStr = context.makeErrorString();
     fprintf(stderr, "Error parsing YAML: %s\n", errorStr.c_str());

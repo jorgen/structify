@@ -1,6 +1,6 @@
 ### Project
 cmake_minimum_required(VERSION 3.25)
-project(json_struct VERSION "1.0.3" HOMEPAGE_URL "https://github.com/jorgen/json_struct" DESCRIPTION "A library for parsing JSON directly to C++ structs and vice versa." LANGUAGES CXX)
+project(structify VERSION "1.0.3" HOMEPAGE_URL "https://github.com/jorgen/structify" DESCRIPTION "A library for parsing JSON directly to C++ structs and vice versa." LANGUAGES CXX)
 set(CPACK_PACKAGE_VENDOR "Jørgen Lind")
 
 set(ADDITIONAL_MODULES_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -22,18 +22,18 @@ else()
 endif()
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 
-if (DEFINED ENV{JSON_STRUCT_DISABLE_PCH})
-  set(JSON_STRUCT_OPT_DISABLE_PCH_DEFAULT "$ENV{JSON_STRUCT_DISABLE_PCH}")
+if (DEFINED ENV{STRUCTIFY_DISABLE_PCH})
+  set(STRUCTIFY_OPT_DISABLE_PCH_DEFAULT "$ENV{STRUCTIFY_DISABLE_PCH}")
 else()
-  set(JSON_STRUCT_OPT_DISABLE_PCH_DEFAULT "OFF")
+  set(STRUCTIFY_OPT_DISABLE_PCH_DEFAULT "OFF")
 endif()
 
 ### Options
-option(JSON_STRUCT_OPT_BUILD_BENCHMARKS "Build json_struct benchmarks" OFF)
-option(JSON_STRUCT_OPT_BUILD_EXAMPLES "Build json_struct examples" ${IS_TOPLEVEL_PROJECT})
-option(JSON_STRUCT_OPT_BUILD_TESTS "Build and perform json_struct tests" ${IS_TOPLEVEL_PROJECT})
-option(JSON_STRUCT_OPT_INSTALL "Generate and install json_struct target" ${IS_TOPLEVEL_PROJECT})
-option(JSON_STRUCT_OPT_DISABLE_PCH "Disable precompiled headers" ${JSON_STRUCT_OPT_DISABLE_PCH_DEFAULT})
+option(STRUCTIFY_OPT_BUILD_BENCHMARKS "Build structify benchmarks" OFF)
+option(STRUCTIFY_OPT_BUILD_EXAMPLES "Build structify examples" ${IS_TOPLEVEL_PROJECT})
+option(STRUCTIFY_OPT_BUILD_TESTS "Build and perform structify tests" ${IS_TOPLEVEL_PROJECT})
+option(STRUCTIFY_OPT_INSTALL "Generate and install structify target" ${IS_TOPLEVEL_PROJECT})
+option(STRUCTIFY_OPT_DISABLE_PCH "Disable precompiled headers" ${STRUCTIFY_OPT_DISABLE_PCH_DEFAULT})
 
 ### Compiler
 function(set_compiler_flags_for_target target)
@@ -50,7 +50,7 @@ function(set_compiler_flags_for_target target)
 endfunction()
 
 ### Include
-set(JSON_STRUCT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(STRUCTIFY_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 include(FetchContent)
 
@@ -82,26 +82,26 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(yaml_test_suite)
 
 ### Examples
-if(JSON_STRUCT_OPT_BUILD_EXAMPLES)
+if(STRUCTIFY_OPT_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
 
 ### Tests
-if(JSON_STRUCT_OPT_BUILD_TESTS)
+if(STRUCTIFY_OPT_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif()
 
 ### Benchmarks
-if(JSON_STRUCT_OPT_BUILD_BENCHMARKS)
+if(STRUCTIFY_OPT_BUILD_BENCHMARKS)
   if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
-    set(JSON_STRUCT_OPT_BUILD_BENCHMARKS OFF)
+    set(STRUCTIFY_OPT_BUILD_BENCHMARKS OFF)
   endif()
   if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.2)
-    set(JSON_STRUCT_OPT_BUILD_BENCHMARKS OFF)
+    set(STRUCTIFY_OPT_BUILD_BENCHMARKS OFF)
   endif()
 endif()
-if(JSON_STRUCT_OPT_BUILD_BENCHMARKS)
+if(STRUCTIFY_OPT_BUILD_BENCHMARKS)
   add_subdirectory(performance)
 endif()
 
@@ -126,8 +126,8 @@ target_include_directories(${PROJECT_NAME}
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
 set(CPACK_PACKAGE_DESCRIPTION "${PROJECT_DESCRIPTION}")
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "all")
-set(CPACK_DEBIAN_PACKAGE_NAME "libjsonstruct-dev")
-set(CPACK_RPM_PACKAGE_NAME "libjsonstruct-devel")
+set(CPACK_DEBIAN_PACKAGE_NAME "libstructify-dev")
+set(CPACK_RPM_PACKAGE_NAME "libstructify-devel")
 set(CPACK_PACKAGE_HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}")
 set(CPACK_PACKAGE_MAINTAINER "${CPACK_PACKAGE_VENDOR}")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
@@ -160,7 +160,7 @@ export(TARGETS "${PROJECT_NAME}"
     EXPORT_LINK_INTERFACE_LIBRARIES
 )
 
-if(JSON_STRUCT_OPT_INSTALL)
+if(STRUCTIFY_OPT_INSTALL)
     install(TARGETS "${PROJECT_NAME}"
         EXPORT ${PROJECT_NAME}
         INCLUDES
@@ -190,7 +190,7 @@ if(JSON_STRUCT_OPT_INSTALL)
 
 
 
-    file(GLOB HEADERS_TO_INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/include/json_struct/*)
+    file(GLOB HEADERS_TO_INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/include/structify/*)
     install(FILES ${HEADERS_TO_INSTALL}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
     )
