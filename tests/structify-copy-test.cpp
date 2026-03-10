@@ -52,17 +52,16 @@ void js_validate_json(STFY::Tokenizer &tokenizer)
 {
   STFY::Token token;
   STFY::Error error;
-  size_t count;
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::Number);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
@@ -70,7 +69,7 @@ void js_validate_json(STFY::Tokenizer &tokenizer)
   const char *sub_start = token.value.data;
 
   while (error == STFY::Error::NoError && token.value_type != STFY::Type::ObjectEnd)
-    error = tokenizer.nextTokens(&token, 1, count);
+    error = tokenizer.nextTokens(&token, 1).second;
 
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
@@ -81,7 +80,7 @@ void js_validate_json(STFY::Tokenizer &tokenizer)
   std::string buffer(sub_start, sub_size);
 
   while (error == STFY::Error::NoError && token.value_type != STFY::Type::ObjectEnd)
-    error = tokenizer.nextTokens(&token, 1, count);
+    error = tokenizer.nextTokens(&token, 1).second;
 
   STFY::ParseContext context(buffer.c_str(), buffer.size());
   SubObject subObj;
@@ -130,11 +129,10 @@ TEST_CASE("copy_test_js_copy_parsed", "[tokenizer]")
 
   STFY::Token token;
   STFY::Error error = STFY::Error::NoError;
-  size_t count;
   std::vector<STFY::Token> tokens;
   while (error == STFY::Error::NoError)
   {
-    error = tokenizer.nextTokens(&token, 1, count);
+    error = tokenizer.nextTokens(&token, 1).second;
     tokens.push_back(token);
   }
 

@@ -39,12 +39,11 @@ TEST_CASE("basic_comment_parsing", "[tokenizer][comments]")
   tokenizer.addData(json_data, sizeof(json_data));
 
   STFY::Token token;
-  size_t count;
-  STFY::Error error = tokenizer.nextTokens(&token, 1, count);
+  STFY::Error error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(token.name.size == 3);
@@ -52,7 +51,7 @@ TEST_CASE("basic_comment_parsing", "[tokenizer][comments]")
   REQUIRE(token.value.size == 5);
   REQUIRE(strncmp(token.value.data, "value", 5) == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 }
@@ -69,12 +68,11 @@ TEST_CASE("comment_at_beginning", "[tokenizer][comments]")
   tokenizer.addData(json_data, sizeof(json_data));
 
   STFY::Token token;
-  size_t count;
-  STFY::Error error = tokenizer.nextTokens(&token, 1, count);
+  STFY::Error error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(strncmp(token.name.data, "key", 3) == 0);
@@ -92,18 +90,17 @@ TEST_CASE("inline_comment", "[tokenizer][comments]")
   tokenizer.addData(json_data, sizeof(json_data));
 
   STFY::Token token;
-  size_t count;
-  STFY::Error error = tokenizer.nextTokens(&token, 1, count);
+  STFY::Error error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(strncmp(token.name.data, "key", 3) == 0);
   REQUIRE(strncmp(token.value.data, "value", 5) == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "number", STFY::Type::Number, "42") == 0);
 }
@@ -122,12 +119,11 @@ TEST_CASE("multiple_consecutive_comments", "[tokenizer][comments]")
   tokenizer.addData(json_data, sizeof(json_data));
 
   STFY::Token token;
-  size_t count;
-  STFY::Error error = tokenizer.nextTokens(&token, 1, count);
+  STFY::Error error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
 }
@@ -149,36 +145,35 @@ TEST_CASE("comments_in_array", "[tokenizer][comments]")
   tokenizer.addData(json_data, sizeof(json_data));
 
   STFY::Token token;
-  size_t count;
   STFY::Error error;
 
   // ObjectStart
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
   // "items" property
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "items", STFY::Type::ArrayStart, "[") == 0);
 
   // "item1"
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::Ascii, "", STFY::Type::String, "item1") == 0);
 
   // "item2"
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::Ascii, "", STFY::Type::String, "item2") == 0);
 
   // ArrayEnd
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ArrayEnd);
 
   // ObjectEnd
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 }
@@ -195,8 +190,7 @@ TEST_CASE("comments_disabled_by_default", "[tokenizer][comments]")
   tokenizer.addData(json_data, sizeof(json_data));
 
   STFY::Token token;
-  size_t count;
-  STFY::Error error = tokenizer.nextTokens(&token, 1, count);
+  STFY::Error error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 }
@@ -216,35 +210,34 @@ TEST_CASE("comments_between_object_properties", "[tokenizer][comments]")
   tokenizer.addData(json_data, sizeof(json_data));
 
   STFY::Token token;
-  size_t count;
   STFY::Error error;
 
   // ObjectStart
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
   // "first" property
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(strncmp(token.name.data, "first", 5) == 0);
   REQUIRE(strncmp(token.value.data, "value1", 6) == 0);
 
   // "second" property
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(strncmp(token.name.data, "second", 6) == 0);
   REQUIRE(strncmp(token.value.data, "value2", 6) == 0);
 
   // "third" property
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "third", STFY::Type::Number, "123") == 0);
 
   // ObjectEnd
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 }
@@ -261,23 +254,22 @@ TEST_CASE("comment_after_colon", "[tokenizer][comments]")
   tokenizer.addData(json_data, sizeof(json_data));
 
   STFY::Token token;
-  size_t count;
   STFY::Error error;
 
   // ObjectStart
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
   // "key" property
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(strncmp(token.name.data, "key", 3) == 0);
   REQUIRE(strncmp(token.value.data, "value", 5) == 0);
 
   // ObjectEnd
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 }
@@ -294,12 +286,11 @@ TEST_CASE("empty_comment", "[tokenizer][comments]")
   tokenizer.addData(json_data, sizeof(json_data));
 
   STFY::Token token;
-  size_t count;
-  STFY::Error error = tokenizer.nextTokens(&token, 1, count);
+  STFY::Error error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(strncmp(token.name.data, "key", 3) == 0);
@@ -317,12 +308,11 @@ TEST_CASE("comment_with_special_characters", "[tokenizer][comments]")
   tokenizer.addData(json_data, sizeof(json_data));
 
   STFY::Token token;
-  size_t count;
-  STFY::Error error = tokenizer.nextTokens(&token, 1, count);
+  STFY::Error error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(strncmp(token.name.data, "key", 3) == 0);
@@ -337,23 +327,22 @@ TEST_CASE("comment_without_newline_at_eof", "[tokenizer][comments]")
   tokenizer.addData(json_data, strlen(json_data));
 
   STFY::Token token;
-  size_t count;
   STFY::Error error;
 
   // ObjectStart
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
   // "key" property
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::String);
   REQUIRE(strncmp(token.name.data, "key", 3) == 0);
   REQUIRE(strncmp(token.value.data, "value", 5) == 0);
 
   // This should handle the case where comment reaches EOF
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   // The tokenizer should either succeed with ObjectEnd or request more data
   REQUIRE((error == STFY::Error::NoError || error == STFY::Error::NeedMoreData));
 }

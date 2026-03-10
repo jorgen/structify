@@ -39,16 +39,15 @@ TEST_CASE("check_fail_json_with_ascii_property", "[tokenizer]")
   tokenizer.addData(json_with_ascii_property);
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::IllegalPropertyName);
 }
 
@@ -64,16 +63,15 @@ TEST_CASE("check_fail_json_with_ascii_data", "[tokenizer]")
   tokenizer.addData(json_with_ascii_data);
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::IllegalDataValue);
 }
 
@@ -89,16 +87,15 @@ TEST_CASE("check_fail_json_with_new_line_seperator", "[tokenizer]")
   tokenizer.addData(json_with_new_line_seperator);
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::InvalidToken);
 }
 
@@ -114,20 +111,19 @@ TEST_CASE("check_fail_json_with_comma_before_obj_end", "[tokenizer]")
   tokenizer.addData(json_with_comma_before_obj_end, sizeof(json_with_comma_before_obj_end));
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "color", STFY::Type::String, "red") == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::ExpectedDataToken);
 }
 
@@ -143,16 +139,15 @@ TEST_CASE("check_fail_json_with_illegal_chars", "[tokenizer]")
   tokenizer.addData(json_with_illegal_chars, sizeof(json_with_illegal_chars));
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::EncounteredIllegalChar);
 }
 
@@ -166,16 +161,15 @@ TEST_CASE("check_fail_json_with_empty_array", "[tokenizer]")
   tokenizer.addData(json_with_illegal_comma_in_array);
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ArrayStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::EncounteredIllegalChar);
 }
 
@@ -189,8 +183,7 @@ TEST_CASE("check_fail_broken_json_stream", "[tokenizer]")
   tokenizer.addData(json_broken_stream);
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error != STFY::Error::NoError);
 }
 

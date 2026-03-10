@@ -28,26 +28,25 @@ int main()
     STFY::Tokenizer tokenizer;
     tokenizer.allowComments(true);  // Enable comment support
     STFY::Token token;
-    size_t count;
     tokenizer.addData(json);
-    error = tokenizer.nextTokens(&token, 1, count);
+    error = tokenizer.nextTokens(&token, 1).second;
     if (token.value_type == STFY::Type::ObjectStart) {
-        error = tokenizer.nextTokens(&token, 1, count);
+        error = tokenizer.nextTokens(&token, 1).second;
         if (error != STFY::Error::NoError)
             exit(1);
         key = std::string(token.value.data, token.value.size);
-        error = tokenizer.nextTokens(&token, 1, count);
+        error = tokenizer.nextTokens(&token, 1).second;
         if (error != STFY::Error::NoError)
             exit(1);
         char *outpointer;
         number = strtol(token.value.data,
                         &outpointer,
                         10);
-        error = tokenizer.nextTokens(&token, 1, count);
+        error = tokenizer.nextTokens(&token, 1).second;
         if (error != STFY::Error::NoError)
             exit(1);
         boolean = std::string(token.value.data, token.value.size) == "true";
-        error = tokenizer.nextTokens(&token, 1, count);
+        error = tokenizer.nextTokens(&token, 1).second;
         if (error != STFY::Error::NoError)
             exit(1);
         fprintf(stdout, "Parsed data %s - %d - %d\n", key.c_str(), number, boolean);

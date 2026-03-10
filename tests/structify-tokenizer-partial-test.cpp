@@ -45,24 +45,23 @@ TEST_CASE("check_json_single_buffer_1", "[tokenizer]")
   tokenizer.addData(json_data_combined_1, sizeof(json_data_combined_1));
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::String, "color", STFY::Type::String, "red") == 0));
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NeedMoreData);
 }
 
@@ -80,24 +79,23 @@ TEST_CASE("check_json_single_buffer_2", "[tokenizer]")
   tokenizer.addData(json_data_combined_2, sizeof(json_data_combined_2));
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "color", STFY::Type::String, "red") == 0));
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NeedMoreData);
 }
 
@@ -115,24 +113,23 @@ TEST_CASE("check_json_single_buffer_3", "[tokenizer]")
   tokenizer.addData(json_data_combined_3, sizeof(json_data_combined_3));
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "color", STFY::Type::Bool, "true") == 0));
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NeedMoreData);
 }
 
@@ -154,40 +151,39 @@ TEST_CASE("check_json_single_buffer_4", "[tokenizer]")
   tokenizer.addData(json_data_combined_4, sizeof(json_data_combined_4));
 
   STFY::Token token;
-  size_t count;
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectStart);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(assert_token(token, STFY::Type::String, "foo", STFY::Type::String, "bar") == 0);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::String, "array", STFY::Type::ArrayStart, "[") == 0));
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "", STFY::Type::String, "one") == 0));
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "", STFY::Type::String, "two") == 0));
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "", STFY::Type::String, "three") == 0));
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE((assert_token(token, STFY::Type::Ascii, "", STFY::Type::ArrayEnd, "]") == 0));
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NoError);
   REQUIRE(token.value_type == STFY::Type::ObjectEnd);
 
-  error = tokenizer.nextTokens(&token, 1, count);
+  error = tokenizer.nextTokens(&token, 1).second;
   REQUIRE(error == STFY::Error::NeedMoreData);
 }
 

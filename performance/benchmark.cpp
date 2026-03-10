@@ -19,12 +19,11 @@ TEST_CASE("Benchmarks", "[performance]")
     tokenizer.addData(generatedJsonObject, sizeof(generatedJsonObject)-1);
 
     STFY::Token token;
-    size_t count;
     STFY::Error error = STFY::Error::NoError;
     int object_count = 0;
     do
     {
-      error = tokenizer.nextTokens(&token, 1, count);
+      error = tokenizer.nextTokens(&token, 1).second;
       if (token.value_type == STFY::Type::ObjectStart)
       {
         object_count++;
@@ -227,13 +226,12 @@ TEST_CASE("Benchmarks", "[performance]")
     tokenizer.addData(generatedJsonArray, sizeof(generatedJsonArray)-1);
 
     STFY::Token token;
-    size_t count;
     STFY::Error error = STFY::Error::NoError;
     int array_size = 0;
     int max_size = 0;
     do
     {
-      error = tokenizer.nextTokens(&token, 1, count);
+      error = tokenizer.nextTokens(&token, 1).second;
       if (token.value_type == STFY::Type::ArrayStart)
       {
         array_size++;

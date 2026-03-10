@@ -283,7 +283,6 @@ static const int MAX_TOKENS = 10000;
 
 static TestValue parseContainer(STFY::Tokenizer &tok, const STFY::Token &start_token, int &token_count, AnchorMap &anchors, bool json_mode = false)
 {
-  size_t count;
   TestValue val;
   if (start_token.value_type == STFY::Type::ObjectStart)
   {
@@ -293,7 +292,7 @@ static TestValue parseContainer(STFY::Tokenizer &tok, const STFY::Token &start_t
       if (++token_count > MAX_TOKENS)
         throw std::runtime_error("token limit exceeded");
       STFY::Token inner;
-      STFY::Error err = tok.nextTokens(&inner, 1, count);
+      STFY::Error err = tok.nextTokens(&inner, 1).second;
       if (err != STFY::Error::NoError)
         break;
       if (inner.value_type == STFY::Type::ObjectEnd)
@@ -349,7 +348,7 @@ static TestValue parseContainer(STFY::Tokenizer &tok, const STFY::Token &start_t
       if (++token_count > MAX_TOKENS)
         throw std::runtime_error("token limit exceeded");
       STFY::Token inner;
-      STFY::Error err = tok.nextTokens(&inner, 1, count);
+      STFY::Error err = tok.nextTokens(&inner, 1).second;
       if (err != STFY::Error::NoError)
         break;
       if (inner.value_type == STFY::Type::ArrayEnd)
@@ -382,8 +381,7 @@ static TestValue tokensToValue(STFY::Tokenizer &tok, bool json_mode = false)
 {
   AnchorMap anchors;
   STFY::Token token;
-  size_t count;
-  STFY::Error error = tok.nextTokens(&token, 1, count);
+  STFY::Error error = tok.nextTokens(&token, 1).second;
   if (error != STFY::Error::NoError)
   {
     TestValue val;

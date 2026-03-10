@@ -867,7 +867,7 @@ public:
   void resetData(const char *data, size_t size, size_t index);
   void resetData(const std::vector<Token> *parsedData, size_t index);
 
-  Error nextTokens(Token *tokens, size_t capacity, size_t &count);
+  std::pair<size_t, Error> nextTokens(Token *tokens, size_t capacity);
   const char *currentPosition() const;
 
   void pushScope(STFY::Type type);
@@ -1240,9 +1240,9 @@ inline void Tokenizer::resetData(const std::vector<Token> *parsedData, size_t in
   resetForNewToken();
 }
 
-inline Error Tokenizer::nextTokens(Token *tokens, size_t capacity, size_t &count)
+inline std::pair<size_t, Error> Tokenizer::nextTokens(Token *tokens, size_t capacity)
 {
-  count = 0;
+  size_t count = 0;
   assert(!scope_counter.size() ||
          (scope_counter.back().type != STFY::Type::ArrayEnd && scope_counter.back().type != STFY::Type::ObjectEnd));
 
@@ -1250,7 +1250,7 @@ inline Error Tokenizer::nextTokens(Token *tokens, size_t capacity, size_t &count
   {
     if (scope_counter.size() && scope_counter.back().depth == 0)
     {
-      return count > 0 ? Error::NoError : Error::ScopeHasEnded;
+      return {count, count > 0 ? Error::NoError : Error::ScopeHasEnded};
     }
     if (parsed_data_vector)
     {
@@ -1270,7 +1270,7 @@ inline Error Tokenizer::nextTokens(Token *tokens, size_t capacity, size_t &count
 
     if (STRUCTIFY_UNLIKELY(data_.size == 0))
     {
-      return count > 0 ? Error::NoError : Error::NeedMoreData;
+      return {count, count > 0 ? Error::NoError : Error::NeedMoreData};
     }
 
     error_context.clear();
@@ -1281,13 +1281,13 @@ inline Error Tokenizer::nextTokens(Token *tokens, size_t capacity, size_t &count
 
     if (STRUCTIFY_UNLIKELY(error == Error::NeedMoreData))
     {
-      return count > 0 ? Error::NoError : Error::NeedMoreData;
+      return {count, count > 0 ? Error::NoError : Error::NeedMoreData};
     }
 
     if (STRUCTIFY_UNLIKELY(error != Error::NoError))
     {
       updateErrorContext(error);
-      return error;
+      return {count, error};
     }
 
     if (next_token.value_type == Type::ArrayStart || next_token.value_type == Type::ObjectStart)
@@ -1298,7 +1298,7 @@ inline Error Tokenizer::nextTokens(Token *tokens, size_t capacity, size_t &count
       {
         error = Error::UnexpectedArrayEnd;
         updateErrorContext(error);
-        return error;
+        return {count, error};
       }
       container_stack.pop_back();
     }
@@ -1308,7 +1308,7 @@ inline Error Tokenizer::nextTokens(Token *tokens, size_t capacity, size_t &count
       {
         error = Error::UnexpectedObjectEnd;
         updateErrorContext(error);
-        return error;
+        return {count, error};
       }
       container_stack.pop_back();
     }
@@ -1316,7 +1316,7 @@ inline Error Tokenizer::nextTokens(Token *tokens, size_t capacity, size_t &count
       scope_counter.back().handleType(next_token.value_type);
     count++;
   }
-  return Error::NoError;
+  return {count, Error::NoError};
 }
 
 inline const char *Tokenizer::currentPosition() const
@@ -1346,10 +1346,9 @@ inline void Tokenizer::popScope()
 inline STFY::Error Tokenizer::goToEndOfScope(STFY::Token &token)
 {
   STFY::Error error = STFY::Error::NoError;
-  size_t count;
   while (scope_counter.back().depth && error == STFY::Error::NoError)
   {
-    error = nextTokens(&token, 1, count);
+    error = nextTokens(&token, 1).second;
   }
   return error;
 }
@@ -2286,10 +2285,9 @@ static inline STFY::Error reformat(const char *data, size_t size, std::string &o
     out.resize(4096);
   serializer.setBuffer(&out[0], out.size());
 
-  size_t count;
   while (error == Error::NoError)
   {
-    error = tokenizer.nextTokens(&token, 1, count);
+    error = tokenizer.nextTokens(&token, 1).second;
     if (error != Error::NoError)
       break;
     serializer.write(token);
