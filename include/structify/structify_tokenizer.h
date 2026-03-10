@@ -1252,6 +1252,8 @@ inline GetTokensResult Tokenizer::nextTokens(Token *tokens, size_t capacity)
   assert(!scope_counter.size() ||
          (scope_counter.back().type != STFY::Type::ArrayEnd && scope_counter.back().type != STFY::Type::ObjectEnd));
 
+  error_context.clear();
+
   while (count < capacity)
   {
     if (scope_counter.size() && scope_counter.back().depth == 0)
@@ -1279,8 +1281,8 @@ inline GetTokensResult Tokenizer::nextTokens(Token *tokens, size_t capacity)
       return {count, count > 0 ? Error::NoError : Error::NeedMoreData};
     }
 
-    error_context.clear();
-    resetForNewToken();
+    if (count == 0)
+      resetForNewToken();
 
     Token &next_token = tokens[count];
     Error error = populateNextTokenFromDataRef(next_token, data_);
@@ -1351,12 +1353,16 @@ inline void Tokenizer::popScope()
 
 inline STFY::Error Tokenizer::goToEndOfScope(STFY::Token &token)
 {
-  STFY::Error error = STFY::Error::NoError;
-  while (scope_counter.back().depth && error == STFY::Error::NoError)
+  Token buf[32];
+  while (scope_counter.back().depth)
   {
-    error = nextTokens(&token, 1).error;
+    auto result = nextTokens(buf, 32);
+    if (result.error != Error::NoError)
+      return result.error;
+    if (result.count > 0)
+      token = buf[result.count - 1];
   }
-  return error;
+  return Error::NoError;
 }
 
 
@@ -2096,6 +2102,7 @@ inline Error Tokenizer::populateNextTokenFromDataRef(Token &next_token, const Da
           }
           populate_anonymous_token(data, type, next_token);
           token_state = InTokenState::FindingTokenEnd;
+          resetForNewValue();
           return Error::NoError;
 
         case Type::ObjectStart:
@@ -2103,6 +2110,7 @@ inline Error Tokenizer::populateNextTokenFromDataRef(Token &next_token, const Da
           populate_anonymous_token(data, type, next_token);
           expecting_prop_or_anonymous_data = false;
           token_state = InTokenState::FindingName;
+          resetForNewValue();
           return Error::NoError;
         default:
           return Error::UnknownError;
@@ -2163,6 +2171,7 @@ inline Error Tokenizer::populateNextTokenFromDataRef(Token &next_token, const Da
         token_state = InTokenState::FindingTokenEnd;
       }
       next_token = tmp_token;
+      resetForNewValue();
       return Error::NoError;
     case InTokenState::FindingTokenEnd:
       error = findTokenEnd(json_data, &diff);
@@ -2273,7 +2282,6 @@ STRUCTIFY_COLD inline Error Tokenizer::updateErrorContext(Error error, const std
 static inline STFY::Error reformat(const char *data, size_t size, std::string &out,
                                  const SerializerOptions &options = SerializerOptions())
 {
-  Token token;
   Tokenizer tokenizer;
   tokenizer.addData(data, size);
   Error error = Error::NoError;
@@ -2291,12 +2299,17 @@ static inline STFY::Error reformat(const char *data, size_t size, std::string &o
     out.resize(4096);
   serializer.setBuffer(&out[0], out.size());
 
-  while (error == Error::NoError)
+  Token buf[32];
+  while (true)
   {
-    error = tokenizer.nextTokens(&token, 1).error;
-    if (error != Error::NoError)
+    auto result = tokenizer.nextTokens(buf, 32);
+    for (size_t i = 0; i < result.count; i++)
+      serializer.write(buf[i]);
+    if (result.error != Error::NoError)
+    {
+      error = result.error;
       break;
-    serializer.write(token);
+    }
   }
   out.resize(last_pos + serializer.currentBuffer().used);
   if (error == Error::NeedMoreData)

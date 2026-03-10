@@ -12,7 +12,7 @@ add_executable(benchmark
         include/simdjson/simdjson.cpp
     )
 target_compile_definitions(benchmark PRIVATE CATCH_CONFIG_ENABLE_BENCHMARKING)
-target_include_directories(benchmark PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(benchmark PRIVATE ${PROJECT_SOURCE_DIR}/include ${float_tools_SOURCE_DIR}/include)
 if (MSVC)
   target_compile_options(benchmark PRIVATE /w)
 else()

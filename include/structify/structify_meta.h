@@ -477,6 +477,14 @@ struct ParseContext
     return error;
   }
 
+  Error skipScope()
+  {
+    tokenizer.pushScope(token.value_type);
+    error = tokenizer.goToEndOfScope(token);
+    tokenizer.popScope();
+    return error;
+  }
+
   std::string makeErrorString() const
   {
     if (error == Error::MissingPropertyMember)

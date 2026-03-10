@@ -640,20 +640,8 @@ struct TypeHandler<JsonArrayRef>
       return Error::ExpectedArrayStart;
 
     to_type.ref.data = context.token.value.data;
-
-    size_t level = 1;
-    Error error = Error::NoError;
-    while (error == STFY::Error::NoError && level)
-    {
-      error = context.nextToken();
-      if (context.token.value_type == Type::ArrayStart)
-        level++;
-      else if (context.token.value_type == Type::ArrayEnd)
-        level--;
-    }
-
+    Error error = context.skipScope();
     to_type.ref.size = size_t(context.token.value.data + context.token.value.size - to_type.ref.data);
-
     return error;
   }
 
@@ -675,21 +663,9 @@ struct TypeHandler<JsonArray>
       return Error::ExpectedArrayStart;
 
     const char *start = context.token.value.data;
-
-    size_t level = 1;
-    Error error = Error::NoError;
-    while (error == STFY::Error::NoError && level)
-    {
-      error = context.nextToken();
-      if (context.token.value_type == Type::ArrayStart)
-        level++;
-      else if (context.token.value_type == Type::ArrayEnd)
-        level--;
-    }
-
+    Error error = context.skipScope();
     if (error == STFY::Error::NoError)
       to_type.data.assign(start, context.token.value.data + context.token.value.size - start);
-
     return error;
   }
 
@@ -721,17 +697,7 @@ struct TypeHandler<JsonObjectRef>
       return Error::ExpectedObjectStart;
 
     to_type.ref.data = context.token.value.data;
-    size_t level = 1;
-    Error error = Error::NoError;
-    while (error == STFY::Error::NoError && level)
-    {
-      error = context.nextToken();
-      if (context.token.value_type == Type::ObjectStart)
-        level++;
-      else if (context.token.value_type == Type::ObjectEnd)
-        level--;
-    }
-
+    Error error = context.skipScope();
     to_type.ref.size = size_t(context.token.value.data + context.token.value.size - to_type.ref.data);
     return error;
   }
@@ -754,21 +720,9 @@ struct TypeHandler<JsonObject>
       return Error::ExpectedObjectStart;
 
     const char *start = context.token.value.data;
-
-    size_t level = 1;
-    Error error = Error::NoError;
-    while (error == STFY::Error::NoError && level)
-    {
-      error = context.nextToken();
-      if (context.token.value_type == Type::ObjectStart)
-        level++;
-      else if (context.token.value_type == Type::ObjectEnd)
-        level--;
-    }
-
+    Error error = context.skipScope();
     if (error == STFY::Error::NoError)
       to_type.data.assign(start, context.token.value.data + context.token.value.size - start);
-
     return error;
   }
 
@@ -796,35 +750,11 @@ struct TypeHandler<JsonObjectOrArrayRef>
 {
   static inline Error to(JsonObjectOrArrayRef &to_type, ParseContext &context)
   {
-    STFY::Type openType;
-    STFY::Type closeType;
-    if (context.token.value_type == STFY::Type::ObjectStart)
-    {
-      openType = STFY::Type::ObjectStart;
-      closeType = STFY::Type::ObjectEnd;
-    }
-    else if (context.token.value_type == STFY::Type::ArrayStart)
-    {
-      openType = STFY::Type::ArrayStart;
-      closeType = STFY::Type::ArrayEnd;
-    }
-    else
-    {
+    if (context.token.value_type != STFY::Type::ObjectStart && context.token.value_type != STFY::Type::ArrayStart)
       return Error::ExpectedObjectStart;
-    }
 
     to_type.ref.data = context.token.value.data;
-    size_t level = 1;
-    Error error = Error::NoError;
-    while (error == STFY::Error::NoError && level)
-    {
-      error = context.nextToken();
-      if (context.token.value_type == openType)
-        level++;
-      else if (context.token.value_type == closeType)
-        level--;
-    }
-
+    Error error = context.skipScope();
     to_type.ref.size = size_t(context.token.value.data + context.token.value.size - to_type.ref.data);
     return error;
   }
@@ -843,39 +773,13 @@ struct TypeHandler<JsonObjectOrArray>
 {
   static inline Error to(JsonObjectOrArray &to_type, ParseContext &context)
   {
-    STFY::Type openType;
-    STFY::Type closeType;
-    if (context.token.value_type == STFY::Type::ObjectStart)
-    {
-      openType = STFY::Type::ObjectStart;
-      closeType = STFY::Type::ObjectEnd;
-    }
-    else if (context.token.value_type == STFY::Type::ArrayStart)
-    {
-      openType = STFY::Type::ArrayStart;
-      closeType = STFY::Type::ArrayEnd;
-    }
-    else
-    {
+    if (context.token.value_type != STFY::Type::ObjectStart && context.token.value_type != STFY::Type::ArrayStart)
       return Error::ExpectedObjectStart;
-    }
 
     const char *start = context.token.value.data;
-
-    size_t level = 1;
-    Error error = Error::NoError;
-    while (error == STFY::Error::NoError && level)
-    {
-      error = context.nextToken();
-      if (context.token.value_type == openType)
-        level++;
-      else if (context.token.value_type == closeType)
-        level--;
-    }
-
+    Error error = context.skipScope();
     if (error == STFY::Error::NoError)
       to_type.data.assign(start, context.token.value.data + context.token.value.size - start);
-
     return error;
   }
 
