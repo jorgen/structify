@@ -18,7 +18,8 @@ struct TypeHandler<double>
     return Error::NoError;
   }
 
-  static inline void from(const double &d, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const double &d, Token &token, WriterT &writer)
   {
     // char buf[1/*'-'*/ + (DBL_MAX_10_EXP+1)/*308+1 digits*/ + 1/*'.'*/ + 6/*Default? precision*/ + 1/*\0*/];
     char buf[32];
@@ -33,7 +34,22 @@ struct TypeHandler<double>
     token.value_type = Type::Number;
     token.value.data = buf;
     token.value.size = size_t(size);
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const double &d, Token &token, Serializer &serializer)
+  {
+    serializeWith(d, token, serializer);
+  }
+  static inline void fromYaml(const double &d, Token &token, YamlWriter &writer)
+  {
+    serializeWith(d, token, writer);
+  }
+  static inline void fromCbor(const double &d, Token &token, CborWriter &writer)
+  {
+    if (token.name.size > 0)
+      writer.writeKey(token.name.data, token.name.size);
+    writer.writeDouble(d);
   }
 };
 
@@ -51,7 +67,8 @@ struct TypeHandler<float>
     return Error::NoError;
   }
 
-  static inline void from(const float &f, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const float &f, Token &token, WriterT &writer)
   {
     char buf[16];
     int size;
@@ -64,7 +81,22 @@ struct TypeHandler<float>
     token.value_type = Type::Number;
     token.value.data = buf;
     token.value.size = size_t(size);
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const float &f, Token &token, Serializer &serializer)
+  {
+    serializeWith(f, token, serializer);
+  }
+  static inline void fromYaml(const float &f, Token &token, YamlWriter &writer)
+  {
+    serializeWith(f, token, writer);
+  }
+  static inline void fromCbor(const float &f, Token &token, CborWriter &writer)
+  {
+    if (token.name.size > 0)
+      writer.writeKey(token.name.data, token.name.size);
+    writer.writeFloat(f);
   }
 };
 
@@ -82,7 +114,8 @@ struct TypeHandlerIntType
     return Error::NoError;
   }
 
-  static inline void from(const T &from_type, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const T &from_type, Token &token, WriterT &writer)
   {
     char buf[40];
     int digits_truncated;
@@ -96,7 +129,25 @@ struct TypeHandlerIntType
     token.value_type = Type::Number;
     token.value.data = buf;
     token.value.size = size_t(size);
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const T &from_type, Token &token, Serializer &serializer)
+  {
+    serializeWith(from_type, token, serializer);
+  }
+  static inline void fromYaml(const T &from_type, Token &token, YamlWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
+  }
+  static inline void fromCbor(const T &from_type, Token &token, CborWriter &writer)
+  {
+    if (token.name.size > 0)
+      writer.writeKey(token.name.data, token.name.size);
+    if (std::is_signed<T>::value)
+      writer.writeInt(static_cast<int64_t>(from_type));
+    else
+      writer.writeUint(static_cast<uint64_t>(from_type));
   }
 };
 
@@ -179,6 +230,14 @@ public:
   {
     TypeHandler<T>::from(opt(), token, serializer);
   }
+  static inline void fromYaml(const Nullable<T> &opt, Token &token, YamlWriter &writer)
+  {
+    TypeHandler<T>::fromYaml(opt(), token, writer);
+  }
+  static inline void fromCbor(const Nullable<T> &opt, Token &token, CborWriter &writer)
+  {
+    TypeHandler<T>::fromCbor(opt(), token, writer);
+  }
 };
 
 /// \private
@@ -197,19 +256,33 @@ public:
     return TypeHandler<T>::to(to_type.data, context);
   }
 
-  static inline void from(const NullableChecked<T> &opt, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const NullableChecked<T> &opt, Token &token, WriterT &writer)
   {
     if (opt.null)
     {
       const char nullChar[] = "null";
       token.value_type = Type::Null;
       token.value = DataRef(nullChar);
-      serializer.write(token);
+      writer.write(token);
     }
     else
     {
-      TypeHandler<T>::from(opt(), token, serializer);
+      WriterDispatch<WriterT>::template call<T>(opt(), token, writer);
     }
+  }
+
+  static inline void from(const NullableChecked<T> &opt, Token &token, Serializer &serializer)
+  {
+    serializeWith(opt, token, serializer);
+  }
+  static inline void fromYaml(const NullableChecked<T> &opt, Token &token, YamlWriter &writer)
+  {
+    serializeWith(opt, token, writer);
+  }
+  static inline void fromCbor(const NullableChecked<T> &opt, Token &token, CborWriter &writer)
+  {
+    serializeWith(opt, token, writer);
   }
 };
 
@@ -226,6 +299,14 @@ public:
   static inline void from(const Optional<T> &opt, Token &token, Serializer &serializer)
   {
     TypeHandler<T>::from(opt(), token, serializer);
+  }
+  static inline void fromYaml(const Optional<T> &opt, Token &token, YamlWriter &writer)
+  {
+    TypeHandler<T>::fromYaml(opt(), token, writer);
+  }
+  static inline void fromCbor(const Optional<T> &opt, Token &token, CborWriter &writer)
+  {
+    TypeHandler<T>::fromCbor(opt(), token, writer);
   }
 };
 
@@ -245,6 +326,16 @@ public:
     if (opt.assigned)
       TypeHandler<T>::from(opt(), token, serializer);
   }
+  static inline void fromYaml(const OptionalChecked<T> &opt, Token &token, YamlWriter &writer)
+  {
+    if (opt.assigned)
+      TypeHandler<T>::fromYaml(opt(), token, writer);
+  }
+  static inline void fromCbor(const OptionalChecked<T> &opt, Token &token, CborWriter &writer)
+  {
+    if (opt.assigned)
+      TypeHandler<T>::fromCbor(opt(), token, writer);
+  }
 };
 
 #ifdef STFY_STD_OPTIONAL
@@ -263,6 +354,16 @@ public:
   {
     if (opt.has_value())
       TypeHandler<T>::from(opt.value(), token, serializer);
+  }
+  static inline void fromYaml(const std::optional<T> &opt, Token &token, YamlWriter &writer)
+  {
+    if (opt.has_value())
+      TypeHandler<T>::fromYaml(opt.value(), token, writer);
+  }
+  static inline void fromCbor(const std::optional<T> &opt, Token &token, CborWriter &writer)
+  {
+    if (opt.has_value())
+      TypeHandler<T>::fromCbor(opt.value(), token, writer);
   }
 };
 #endif
@@ -284,19 +385,33 @@ public:
     return Error::NoError;
   }
 
-  static inline void from(const std::shared_ptr<T> &unique, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const std::shared_ptr<T> &unique, Token &token, WriterT &writer)
   {
     if (unique)
     {
-      TypeHandler<T>::from(*unique.get(), token, serializer);
+      WriterDispatch<WriterT>::template call<T>(*unique.get(), token, writer);
     }
     else
     {
       const char nullChar[] = "null";
       token.value_type = Type::Null;
       token.value = DataRef(nullChar);
-      serializer.write(token);
+      writer.write(token);
     }
+  }
+
+  static inline void from(const std::shared_ptr<T> &unique, Token &token, Serializer &serializer)
+  {
+    serializeWith(unique, token, serializer);
+  }
+  static inline void fromYaml(const std::shared_ptr<T> &unique, Token &token, YamlWriter &writer)
+  {
+    serializeWith(unique, token, writer);
+  }
+  static inline void fromCbor(const std::shared_ptr<T> &unique, Token &token, CborWriter &writer)
+  {
+    serializeWith(unique, token, writer);
   }
 };
 
@@ -317,19 +432,33 @@ public:
     return Error::NoError;
   }
 
-  static inline void from(const std::unique_ptr<T> &unique, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const std::unique_ptr<T> &unique, Token &token, WriterT &writer)
   {
     if (unique)
     {
-      TypeHandler<T>::from(*unique.get(), token, serializer);
+      WriterDispatch<WriterT>::template call<T>(*unique.get(), token, writer);
     }
     else
     {
       const char nullChar[] = "null";
       token.value_type = Type::Null;
       token.value = DataRef(nullChar);
-      serializer.write(token);
+      writer.write(token);
     }
+  }
+
+  static inline void from(const std::unique_ptr<T> &unique, Token &token, Serializer &serializer)
+  {
+    serializeWith(unique, token, serializer);
+  }
+  static inline void fromYaml(const std::unique_ptr<T> &unique, Token &token, YamlWriter &writer)
+  {
+    serializeWith(unique, token, writer);
+  }
+  static inline void fromCbor(const std::unique_ptr<T> &unique, Token &token, CborWriter &writer)
+  {
+    serializeWith(unique, token, writer);
   }
 };
 
@@ -351,7 +480,8 @@ struct TypeHandler<bool>
     return Error::NoError;
   }
 
-  static inline void from(const bool &b, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const bool &b, Token &token, WriterT &writer)
   {
     const char trueChar[] = "true";
     const char falseChar[] = "false";
@@ -364,7 +494,22 @@ struct TypeHandler<bool>
     {
       token.value = DataRef(falseChar);
     }
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const bool &b, Token &token, Serializer &serializer)
+  {
+    serializeWith(b, token, serializer);
+  }
+  static inline void fromYaml(const bool &b, Token &token, YamlWriter &writer)
+  {
+    serializeWith(b, token, writer);
+  }
+  static inline void fromCbor(const bool &b, Token &token, CborWriter &writer)
+  {
+    if (token.name.size > 0)
+      writer.writeKey(token.name.data, token.name.size);
+    writer.writeBool(b);
   }
 };
 
@@ -407,7 +552,8 @@ struct TypeHandler<T, typename std::enable_if_t<Internal::is_specialization<T, s
         return STFY::Error::NoError;
     }
 
-    static inline void from(const T& val, Token &token, Serializer &serializer)
+    template <typename WriterT>
+    static inline void serializeWith(const T& val, Token &token, WriterT &writer)
     {
         uint64_t t;
         if constexpr (std::is_same_v<std::chrono::high_resolution_clock::time_point, T>)
@@ -416,7 +562,20 @@ struct TypeHandler<T, typename std::enable_if_t<Internal::is_specialization<T, s
         	t = std::chrono::duration_cast<std::chrono::microseconds>(val.time_since_epoch()).count();
 		while (t % 1000 == 0 && t > (uint64_t)1e10)
 			t /= 1000;
-        TypeHandler<uint64_t>::from(t, token, serializer);
+        WriterDispatch<WriterT>::template call<uint64_t>(t, token, writer);
+    }
+
+    static inline void from(const T& val, Token &token, Serializer &serializer)
+    {
+        serializeWith(val, token, serializer);
+    }
+    static inline void fromYaml(const T& val, Token &token, YamlWriter &writer)
+    {
+        serializeWith(val, token, writer);
+    }
+    static inline void fromCbor(const T& val, Token &token, CborWriter &writer)
+    {
+        serializeWith(val, token, writer);
     }
 };
 #endif
@@ -448,24 +607,38 @@ struct TypeHandler<std::vector<T, A>>
     return error;
   }
 
-  static inline void from(const std::vector<T, A> &vec, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const std::vector<T, A> &vec, Token &token, WriterT &writer)
   {
     token.value_type = Type::ArrayStart;
     token.value = DataRef("[");
-    serializer.write(token);
+    writer.write(token);
 
     token.name = DataRef("");
 
     for (auto &index : vec)
     {
-      TypeHandler<T>::from(index, token, serializer);
+      WriterDispatch<WriterT>::template call<T>(index, token, writer);
     }
 
     token.name = DataRef("");
 
     token.value_type = Type::ArrayEnd;
     token.value = DataRef("]");
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const std::vector<T, A> &vec, Token &token, Serializer &serializer)
+  {
+    serializeWith(vec, token, serializer);
+  }
+  static inline void fromYaml(const std::vector<T, A> &vec, Token &token, YamlWriter &writer)
+  {
+    serializeWith(vec, token, writer);
+  }
+  static inline void fromCbor(const std::vector<T, A> &vec, Token &token, CborWriter &writer)
+  {
+    serializeWith(vec, token, writer);
   }
 };
 
@@ -499,24 +672,38 @@ public:
     return error;
   }
 
-  static inline void from(const std::vector<bool, A> &vec, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const std::vector<bool, A> &vec, Token &token, WriterT &writer)
   {
     token.value_type = Type::ArrayStart;
     token.value = DataRef("[");
-    serializer.write(token);
+    writer.write(token);
 
     token.name = DataRef("");
 
     for (bool index : vec)
     {
-      TypeHandler<bool>::from(index, token, serializer);
+      WriterDispatch<WriterT>::template call<bool>(index, token, writer);
     }
 
     token.name = DataRef("");
 
     token.value_type = Type::ArrayEnd;
     token.value = DataRef("]");
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const std::vector<bool, A> &vec, Token &token, Serializer &serializer)
+  {
+    serializeWith(vec, token, serializer);
+  }
+  static inline void fromYaml(const std::vector<bool, A> &vec, Token &token, YamlWriter &writer)
+  {
+    serializeWith(vec, token, writer);
+  }
+  static inline void fromCbor(const std::vector<bool, A> &vec, Token &token, CborWriter &writer)
+  {
+    serializeWith(vec, token, writer);
   }
 };
 
@@ -533,6 +720,20 @@ struct TypeHandler<SilentString>
     if (str.data.size())
     {
       TypeHandler<std::string>::from(str.data, token, serializer);
+    }
+  }
+  static inline void fromYaml(const SilentString &str, Token &token, YamlWriter &writer)
+  {
+    if (str.data.size())
+    {
+      TypeHandler<std::string>::fromYaml(str.data, token, writer);
+    }
+  }
+  static inline void fromCbor(const SilentString &str, Token &token, CborWriter &writer)
+  {
+    if (str.data.size())
+    {
+      TypeHandler<std::string>::fromCbor(str.data, token, writer);
     }
   }
 };
@@ -554,6 +755,20 @@ public:
       TypeHandler<std::vector<T, A>>::from(vec.data, token, serializer);
     }
   }
+  static inline void fromYaml(const SilentVector<T, A> &vec, Token &token, YamlWriter &writer)
+  {
+    if (vec.data.size())
+    {
+      TypeHandler<std::vector<T, A>>::fromYaml(vec.data, token, writer);
+    }
+  }
+  static inline void fromCbor(const SilentVector<T, A> &vec, Token &token, CborWriter &writer)
+  {
+    if (vec.data.size())
+    {
+      TypeHandler<std::vector<T, A>>::fromCbor(vec.data, token, writer);
+    }
+  }
 };
 
 /// \private
@@ -571,6 +786,20 @@ public:
     if (ptr.data)
     {
       TypeHandler<std::unique_ptr<T>>::from(ptr.data, token, serializer);
+    }
+  }
+  static inline void fromYaml(const SilentUniquePtr<T> &ptr, Token &token, YamlWriter &writer)
+  {
+    if (ptr.data)
+    {
+      TypeHandler<std::unique_ptr<T>>::fromYaml(ptr.data, token, writer);
+    }
+  }
+  static inline void fromCbor(const SilentUniquePtr<T> &ptr, Token &token, CborWriter &writer)
+  {
+    if (ptr.data)
+    {
+      TypeHandler<std::unique_ptr<T>>::fromCbor(ptr.data, token, writer);
     }
   }
 };
@@ -824,6 +1053,14 @@ struct TupleTypeHandler
     TypeHandler<Type>::from(from_type.template get<sizeof...(Ts) - INDEX>(), token, serializer);
     TupleTypeHandler<INDEX - 1, Ts...>::from(from_type, token, serializer);
   }
+
+  template <typename WriterT>
+  static inline void serializeWith(const STFY::Tuple<Ts...> &from_type, Token &token, WriterT &writer)
+  {
+    using Type = typename STFY::TypeAt<sizeof...(Ts) - INDEX, Ts...>::type;
+    WriterDispatch<WriterT>::template call<Type>(from_type.template get<sizeof...(Ts) - INDEX>(), token, writer);
+    TupleTypeHandler<INDEX - 1, Ts...>::template serializeWith<WriterT>(from_type, token, writer);
+  }
 };
 
 /// \private
@@ -841,6 +1078,14 @@ struct TupleTypeHandler<0, Ts...>
     STFY_UNUSED(from_type);
     STFY_UNUSED(token);
     STFY_UNUSED(serializer);
+  }
+
+  template <typename WriterT>
+  static inline void serializeWith(const STFY::Tuple<Ts...> &from_type, Token &token, WriterT &writer)
+  {
+    STFY_UNUSED(from_type);
+    STFY_UNUSED(token);
+    STFY_UNUSED(writer);
   }
 };
 } // namespace Internal
@@ -864,20 +1109,34 @@ struct TypeHandler<STFY::Tuple<Ts...>>
     return Error::NoError;
   }
 
-  static inline void from(const STFY::Tuple<Ts...> &from_type, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const STFY::Tuple<Ts...> &from_type, Token &token, WriterT &writer)
   {
     token.value_type = Type::ArrayStart;
     token.value = DataRef("[");
-    serializer.write(token);
+    writer.write(token);
 
     token.name = DataRef("");
 
-    STFY::Internal::TupleTypeHandler<sizeof...(Ts), Ts...>::from(from_type, token, serializer);
+    STFY::Internal::TupleTypeHandler<sizeof...(Ts), Ts...>::template serializeWith<WriterT>(from_type, token, writer);
     token.name = DataRef("");
 
     token.value_type = Type::ArrayEnd;
     token.value = DataRef("]");
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const STFY::Tuple<Ts...> &from_type, Token &token, Serializer &serializer)
+  {
+    serializeWith(from_type, token, serializer);
+  }
+  static inline void fromYaml(const STFY::Tuple<Ts...> &from_type, Token &token, YamlWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
+  }
+  static inline void fromCbor(const STFY::Tuple<Ts...> &from_type, Token &token, CborWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
   }
 };
 
@@ -904,6 +1163,14 @@ struct StdTupleTypeHandler
     TypeHandler<Type>::from(std::get<sizeof...(Ts) - INDEX>(from_type), token, serializer);
     StdTupleTypeHandler<INDEX - 1, Ts...>::from(from_type, token, serializer);
   }
+
+  template <typename WriterT>
+  static inline void serializeWith(const std::tuple<Ts...> &from_type, Token &token, WriterT &writer)
+  {
+    using Type = typename std::tuple_element<sizeof...(Ts) - INDEX, std::tuple<Ts...>>::type;
+    WriterDispatch<WriterT>::template call<Type>(std::get<sizeof...(Ts) - INDEX>(from_type), token, writer);
+    StdTupleTypeHandler<INDEX - 1, Ts...>::template serializeWith<WriterT>(from_type, token, writer);
+  }
 };
 
 /// \private
@@ -921,6 +1188,14 @@ struct StdTupleTypeHandler<0, Ts...>
     STFY_UNUSED(from_type);
     STFY_UNUSED(token);
     STFY_UNUSED(serializer);
+  }
+
+  template <typename WriterT>
+  static inline void serializeWith(const std::tuple<Ts...> &from_type, Token &token, WriterT &writer)
+  {
+    STFY_UNUSED(from_type);
+    STFY_UNUSED(token);
+    STFY_UNUSED(writer);
   }
 };
 } // namespace Internal
@@ -943,20 +1218,34 @@ struct TypeHandler<std::tuple<Ts...>>
     return Error::NoError;
   }
 
-  static inline void from(const std::tuple<Ts...> &from_type, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const std::tuple<Ts...> &from_type, Token &token, WriterT &writer)
   {
     token.value_type = Type::ArrayStart;
     token.value = DataRef("[");
-    serializer.write(token);
+    writer.write(token);
 
     token.name = DataRef("");
 
-    STFY::Internal::StdTupleTypeHandler<sizeof...(Ts), Ts...>::from(from_type, token, serializer);
+    STFY::Internal::StdTupleTypeHandler<sizeof...(Ts), Ts...>::template serializeWith<WriterT>(from_type, token, writer);
     token.name = DataRef("");
 
     token.value_type = Type::ArrayEnd;
     token.value = DataRef("]");
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const std::tuple<Ts...> &from_type, Token &token, Serializer &serializer)
+  {
+    serializeWith(from_type, token, serializer);
+  }
+  static inline void fromYaml(const std::tuple<Ts...> &from_type, Token &token, YamlWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
+  }
+  static inline void fromCbor(const std::tuple<Ts...> &from_type, Token &token, CborWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
   }
 };
 
@@ -983,18 +1272,33 @@ public:
     }
     return context.error;
   }
-  static void from(const OneOrMany<T> &from, Token &token, Serializer &serializer)
+
+  template <typename WriterT>
+  static inline void serializeWith(const OneOrMany<T> &from, Token &token, WriterT &writer)
   {
     if (from.data.empty())
       return;
     if (from.data.size() > 1)
     {
-      TypeHandler<std::vector<T>>::from(from.data, token, serializer);
+      WriterDispatch<WriterT>::template call<std::vector<T>>(from.data, token, writer);
     }
     else
     {
-      TypeHandler<T>::from(from.data.front(), token, serializer);
+      WriterDispatch<WriterT>::template call<T>(from.data.front(), token, writer);
     }
+  }
+
+  static void from(const OneOrMany<T> &from, Token &token, Serializer &serializer)
+  {
+    serializeWith(from, token, serializer);
+  }
+  static void fromYaml(const OneOrMany<T> &from, Token &token, YamlWriter &writer)
+  {
+    serializeWith(from, token, writer);
+  }
+  static void fromCbor(const OneOrMany<T> &from, Token &token, CborWriter &writer)
+  {
+    serializeWith(from, token, writer);
   }
 };
 
@@ -1023,20 +1327,35 @@ public:
       return STFY::Error::ExpectedArrayEnd;
     return context.error;
   }
-  static void from(const T (&from)[N], Token &token, Serializer &serializer)
+
+  template <typename WriterT>
+  static inline void serializeWith(const T (&from)[N], Token &token, WriterT &writer)
   {
     token.value_type = Type::ArrayStart;
     token.value = DataRef("[");
-    serializer.write(token);
+    writer.write(token);
 
     token.name = DataRef("");
     for (size_t i = 0; i < N; i++)
-      TypeHandler<T>::from(from[i], token, serializer);
+      WriterDispatch<WriterT>::template call<T>(from[i], token, writer);
 
     token.name = DataRef("");
     token.value_type = Type::ArrayEnd;
     token.value = DataRef("]");
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static void from(const T (&from)[N], Token &token, Serializer &serializer)
+  {
+    serializeWith(from, token, serializer);
+  }
+  static void fromYaml(const T (&from)[N], Token &token, YamlWriter &writer)
+  {
+    serializeWith(from, token, writer);
+  }
+  static void fromCbor(const T (&from)[N], Token &token, CborWriter &writer)
+  {
+    serializeWith(from, token, writer);
   }
 };
 
@@ -1069,23 +1388,37 @@ struct TypeHandlerMap
     return error;
   }
 
-  static void from(const Map &from, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const Map &from, Token &token, WriterT &writer)
   {
     token.value_type = Type::ObjectStart;
     token.value = DataRef("{");
-    serializer.write(token);
+    writer.write(token);
     for (auto it = from.begin(); it != from.end(); ++it)
     {
       token.name = DataRef(it->first);
       token.name_type = Type::String;
-      TypeHandler<Value>::from(it->second, token, serializer);
+      WriterDispatch<WriterT>::template call<Value>(it->second, token, writer);
     }
     token.name.size = 0;
     token.name.data = "";
     token.name_type = Type::String;
     token.value_type = Type::ObjectEnd;
     token.value = DataRef("}");
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static void from(const Map &from, Token &token, Serializer &serializer)
+  {
+    serializeWith(from, token, serializer);
+  }
+  static void fromYaml(const Map &from, Token &token, YamlWriter &writer)
+  {
+    serializeWith(from, token, writer);
+  }
+  static void fromCbor(const Map &from, Token &token, CborWriter &writer)
+  {
+    serializeWith(from, token, writer);
   }
 };
 
@@ -1456,20 +1789,34 @@ struct TypeHandler<ArrayVariableContent<T, COUNT>>
     return context.error;
   }
 
-  static inline void from(const ArrayVariableContent<T, COUNT> &from_type, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const ArrayVariableContent<T, COUNT> &from_type, Token &token, WriterT &writer)
   {
     token.value_type = Type::ArrayStart;
     token.value = DataRef("[");
-    serializer.write(token);
+    writer.write(token);
 
     token.name = DataRef("");
     for (size_t i = 0; i < from_type.size; i++)
-      TypeHandler<T>::from(from_type.data[i], token, serializer);
+      WriterDispatch<WriterT>::template call<T>(from_type.data[i], token, writer);
 
     token.name = DataRef("");
     token.value_type = Type::ArrayEnd;
     token.value = DataRef("]");
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const ArrayVariableContent<T, COUNT> &from_type, Token &token, Serializer &serializer)
+  {
+    serializeWith(from_type, token, serializer);
+  }
+  static inline void fromYaml(const ArrayVariableContent<T, COUNT> &from_type, Token &token, YamlWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
+  }
+  static inline void fromCbor(const ArrayVariableContent<T, COUNT> &from_type, Token &token, CborWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
   }
 };
 
@@ -1502,25 +1849,38 @@ struct TypeHandlerSet
     return error;
   }
 
-  static inline void from(const Set &set, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const Set &set, Token &token, WriterT &writer)
   {
     token.value_type = Type::ArrayStart;
     token.value = DataRef("[");
-    serializer.write(token);
+    writer.write(token);
 
     token.name = DataRef("");
 
     for (auto &index : set)
     {
-      TypeHandler<T>::from(index, token, serializer);
+      WriterDispatch<WriterT>::template call<T>(index, token, writer);
     }
 
     token.name = DataRef("");
 
     token.value_type = Type::ArrayEnd;
     token.value = DataRef("]");
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const Set &set, Token &token, Serializer &serializer)
+  {
+    serializeWith(set, token, serializer);
+  }
+  static inline void fromYaml(const Set &set, Token &token, YamlWriter &writer)
+  {
+    serializeWith(set, token, writer);
+  }
+  static inline void fromCbor(const Set &set, Token &token, CborWriter &writer)
+  {
+    serializeWith(set, token, writer);
   }
 };
 } // namespace STFY
-

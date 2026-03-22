@@ -62,6 +62,8 @@ set(unit_test_sources
                            yaml-struct-test.cpp
                            cbor-tokenizer-test.cpp
                            cbor-struct-test.cpp
+                           yaml-serialize-test.cpp
+                           cbor-serialize-test.cpp
                            )
 
 add_executable(unit-tests ${unit_test_sources})

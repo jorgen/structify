@@ -1,5 +1,7 @@
 #pragma once
 #include "structify_tokenizer.h"
+#include "structify_yaml_writer.h"
+#include "structify_cbor_writer.h"
 
 namespace STFY
 {
@@ -794,11 +796,51 @@ constexpr const Internal::SuperInfo<T> makeSuperInfo(const char (&name)[NAME_SIZ
   return Internal::SuperInfo<T>(DataRef(name));
 }
 
+// Forward declarations for serialization writers
+class YamlWriter;
+class CborWriter;
+
 template <typename T, typename Enable = void>
 struct TypeHandler
 {
   static inline Error to(T &to_type, ParseContext &context);
   static inline void from(const T &from_type, Token &token, Serializer &serializer);
+  static inline void fromYaml(const T &from_type, Token &token, YamlWriter &writer);
+  static inline void fromCbor(const T &from_type, Token &token, CborWriter &writer);
+};
+
+// WriterDispatch trait — maps writer type to the correct TypeHandler method
+template <typename WriterT>
+struct WriterDispatch;
+
+template <>
+struct WriterDispatch<Serializer>
+{
+  template <typename T>
+  static void call(const T &val, Token &tok, Serializer &s)
+  {
+    TypeHandler<T>::from(val, tok, s);
+  }
+};
+
+template <>
+struct WriterDispatch<YamlWriter>
+{
+  template <typename T>
+  static void call(const T &val, Token &tok, YamlWriter &w)
+  {
+    TypeHandler<T>::fromYaml(val, tok, w);
+  }
+};
+
+template <>
+struct WriterDispatch<CborWriter>
+{
+  template <typename T>
+  static void call(const T &val, Token &tok, CborWriter &w)
+  {
+    TypeHandler<T>::fromCbor(val, tok, w);
+  }
 };
 
 namespace Internal
@@ -876,16 +918,16 @@ inline Error verifyMember(const MemberInfo<MI_T, MI_M, MI_NC> &memberInfo, size_
   return Error::UnassignedRequiredMember;
 }
 
-template <typename T, typename MI_T, typename MI_M, typename MI_NC>
+template <typename WriterT, typename T, typename MI_T, typename MI_M, typename MI_NC>
 inline void serializeMember(const T &from_type, const MemberInfo<MI_T, MI_M, MI_NC> &memberInfo, Token &token,
-                            Serializer &serializer, const char *super_name)
+                            WriterT &writer, const char *super_name)
 {
   STFY_UNUSED(super_name);
   token.name.data = memberInfo.names.template get<0>().data;
   token.name.size = memberInfo.names.template get<0>().size;
   token.name_type = Type::Ascii;
 
-  TypeHandler<MI_T>::from(from_type.*memberInfo.member, token, serializer);
+  WriterDispatch<WriterT>::template call<MI_T>(from_type.*memberInfo.member, token, writer);
 }
 
 template <typename T, size_t PAGE, size_t INDEX>
@@ -895,7 +937,8 @@ struct SuperClassHandler
   static Error verifyMembers(bool *assigned_members, bool track_missing_members,
                              std::vector<std::string> &missing_members);
   static constexpr size_t membersInSuperClasses();
-  static void serializeMembers(const T &from_type, Token &token, Serializer &serializer);
+  template <typename WriterT>
+  static void serializeMembers(const T &from_type, Token &token, WriterT &writer);
 };
 
 template <typename T, size_t PAGE, size_t SIZE>
@@ -918,9 +961,10 @@ struct StartSuperRecursion
     return SuperClassHandler<T, PAGE, SIZE - 1>::membersInSuperClasses();
   }
 
-  static void serializeMembers(const T &from_type, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static void serializeMembers(const T &from_type, Token &token, WriterT &writer)
   {
-    return SuperClassHandler<T, PAGE, SIZE - 1>::serializeMembers(from_type, token, serializer);
+    return SuperClassHandler<T, PAGE, SIZE - 1>::serializeMembers(from_type, token, writer);
   }
 };
 
@@ -958,11 +1002,12 @@ struct StartSuperRecursion<T, PAGE, 0>
     return 0;
   }
 
-  static void serializeMembers(const T &from_type, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static void serializeMembers(const T &from_type, Token &token, WriterT &writer)
   {
     STFY_UNUSED(from_type);
     STFY_UNUSED(token);
-    STFY_UNUSED(serializer);
+    STFY_UNUSED(writer);
   }
 };
 
@@ -992,11 +1037,12 @@ struct MemberChecker
       return memberError;
     return error;
   }
-  inline static void serializeMembers(const T &from_type, const Members &members, Token &token, Serializer &serializer,
+  template <typename WriterT>
+  inline static void serializeMembers(const T &from_type, const Members &members, Token &token, WriterT &writer,
                                       const char *super_name)
   {
-    serializeMember(from_type, members.template get<Members::size - INDEX - 1>(), token, serializer, super_name);
-    MemberChecker<T, Members, PAGE, INDEX - 1>::serializeMembers(from_type, members, token, serializer, super_name);
+    serializeMember(from_type, members.template get<Members::size - INDEX - 1>(), token, writer, super_name);
+    MemberChecker<T, Members, PAGE, INDEX - 1>::serializeMembers(from_type, members, token, writer, super_name);
   }
 };
 
@@ -1028,12 +1074,13 @@ struct MemberChecker<T, Members, PAGE, 0>
     return superError;
   }
 
-  inline static void serializeMembers(const T &from_type, const Members &members, Token &token, Serializer &serializer,
+  template <typename WriterT>
+  inline static void serializeMembers(const T &from_type, const Members &members, Token &token, WriterT &writer,
                                       const char *super_name)
   {
-    serializeMember(from_type, members.template get<Members::size - 1>(), token, serializer, super_name);
+    serializeMember(from_type, members.template get<Members::size - 1>(), token, writer, super_name);
     using Super = decltype(Internal::template StructifyBaseDummy<T, T>::stfy_static_meta_super_info());
-    StartSuperRecursion<T, PAGE + Members::size, Super::size>::serializeMembers(from_type, token, serializer);
+    StartSuperRecursion<T, PAGE + Members::size, Super::size>::serializeMembers(from_type, token, writer);
   }
 };
 
@@ -1082,14 +1129,15 @@ size_t constexpr SuperClassHandler<T, PAGE, INDEX>::membersInSuperClasses()
 }
 
 template <typename T, size_t PAGE, size_t INDEX>
-void SuperClassHandler<T, PAGE, INDEX>::serializeMembers(const T &from_type, Token &token, Serializer &serializer)
+template <typename WriterT>
+void SuperClassHandler<T, PAGE, INDEX>::serializeMembers(const T &from_type, Token &token, WriterT &writer)
 {
   using SuperMeta = decltype(Internal::template StructifyBaseDummy<T, T>::stfy_static_meta_super_info());
   using Super = typename TypeAt<INDEX, SuperMeta>::type::type;
   using Members = decltype(Internal::template StructifyBaseDummy<Super, Super>::stfy_static_meta_data_info());
   auto members = Internal::template StructifyBaseDummy<Super, Super>::stfy_static_meta_data_info();
-  MemberChecker<Super, Members, PAGE, Members::size - 1>::serializeMembers(from_type, members, token, serializer, "");
-  SuperClassHandler<T, PAGE + memberCount<Super, 0>(), INDEX - 1>::serializeMembers(from_type, token, serializer);
+  MemberChecker<Super, Members, PAGE, Members::size - 1>::serializeMembers(from_type, members, token, writer, "");
+  SuperClassHandler<T, PAGE + memberCount<Super, 0>(), INDEX - 1>::serializeMembers(from_type, token, writer);
 }
 
 template <typename T, size_t PAGE>
@@ -1122,13 +1170,14 @@ struct SuperClassHandler<T, PAGE, 0>
     using Super = typename TypeAt<0, SuperMeta>::type::type;
     return memberCount<Super, PAGE>();
   }
-  static void serializeMembers(const T &from_type, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static void serializeMembers(const T &from_type, Token &token, WriterT &writer)
   {
     using SuperMeta = decltype(Internal::template StructifyBaseDummy<T, T>::stfy_static_meta_super_info());
     using Super = typename TypeAt<0, SuperMeta>::type::type;
     using Members = decltype(Internal::template StructifyBaseDummy<Super, Super>::stfy_static_meta_data_info());
     auto members = Internal::StructifyBaseDummy<Super, Super>::stfy_static_meta_data_info();
-    MemberChecker<Super, Members, PAGE, Members::size - 1>::serializeMembers(from_type, members, token, serializer, "");
+    MemberChecker<Super, Members, PAGE, Members::size - 1>::serializeMembers(from_type, members, token, writer, "");
   }
 };
 
@@ -1280,7 +1329,8 @@ struct TypeHandler<Error>
     return Error::NoError;
   }
 
-  static inline void from(const Error &from_type, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const Error &from_type, Token &token, WriterT &writer)
   {
     token.value_type = STFY::Type::String;
     if (from_type < STFY::Error::UserDefinedErrors)
@@ -1291,7 +1341,20 @@ struct TypeHandler<Error>
     {
       token.value = DataRef("UserDefinedError");
     }
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const Error &from_type, Token &token, Serializer &serializer)
+  {
+    serializeWith(from_type, token, serializer);
+  }
+  static inline void fromYaml(const Error &from_type, Token &token, YamlWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
+  }
+  static inline void fromCbor(const Error &from_type, Token &token, CborWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
   }
 };
 
@@ -2200,6 +2263,14 @@ void populateEnumNames(std::vector<DataRef> &names, const char (&data)[N])
     {                                                                                                                  \
       return Internal::EnumHandler<name, js_##name##_string_struct>::from(from_type, token, serializer);               \
     }                                                                                                                  \
+    static inline void fromYaml(const name &from_type, Token &token, YamlWriter &writer)                               \
+    {                                                                                                                  \
+      return Internal::EnumHandler<name, js_##name##_string_struct>::fromYaml(from_type, token, writer);               \
+    }                                                                                                                  \
+    static inline void fromCbor(const name &from_type, Token &token, CborWriter &writer)                               \
+    {                                                                                                                  \
+      return Internal::EnumHandler<name, js_##name##_string_struct>::fromCbor(from_type, token, writer);               \
+    }                                                                                                                  \
   };                                                                                                                   \
   }
 
@@ -2216,6 +2287,14 @@ void populateEnumNames(std::vector<DataRef> &names, const char (&data)[N])
     static inline void from(const ns::name &from_type, Token &token, Serializer &serializer)                           \
     {                                                                                                                  \
       return Internal::EnumHandler<ns::name, ns::js_##name##_string_struct>::from(from_type, token, serializer);       \
+    }                                                                                                                  \
+    static inline void fromYaml(const ns::name &from_type, Token &token, YamlWriter &writer)                           \
+    {                                                                                                                  \
+      return Internal::EnumHandler<ns::name, ns::js_##name##_string_struct>::fromYaml(from_type, token, writer);       \
+    }                                                                                                                  \
+    static inline void fromCbor(const ns::name &from_type, Token &token, CborWriter &writer)                           \
+    {                                                                                                                  \
+      return Internal::EnumHandler<ns::name, ns::js_##name##_string_struct>::fromCbor(from_type, token, writer);       \
     }                                                                                                                  \
   };                                                                                                                   \
   }
@@ -2240,6 +2319,16 @@ void populateEnumNames(std::vector<DataRef> &names, const char (&data)[N])
         const utype from_value = static_cast<utype>(from_type);                                                        \
         TypeHandler<utype>::from(from_value, token, serializer);                                                       \
     }                                                                                                                  \
+    static inline void fromYaml(const name &from_type, Token &token, YamlWriter &writer)                               \
+    {                                                                                                                  \
+        const utype from_value = static_cast<utype>(from_type);                                                        \
+        TypeHandler<utype>::fromYaml(from_value, token, writer);                                                       \
+    }                                                                                                                  \
+    static inline void fromCbor(const name &from_type, Token &token, CborWriter &writer)                               \
+    {                                                                                                                  \
+        const utype from_value = static_cast<utype>(from_type);                                                        \
+        TypeHandler<utype>::fromCbor(from_value, token, writer);                                                       \
+    }                                                                                                                  \
   };                                                                                                                   \
   }
 
@@ -2262,6 +2351,16 @@ void populateEnumNames(std::vector<DataRef> &names, const char (&data)[N])
     {                                                                                                                  \
         const utype from_value = static_cast<utype>(from_type);                                                        \
         TypeHandler<utype>::from(from_value, token, serializer);                                                       \
+    }                                                                                                                  \
+    static inline void fromYaml(const ns::name &from_type, Token &token, YamlWriter &writer)                           \
+    {                                                                                                                  \
+        const utype from_value = static_cast<utype>(from_type);                                                        \
+        TypeHandler<utype>::fromYaml(from_value, token, writer);                                                       \
+    }                                                                                                                  \
+    static inline void fromCbor(const ns::name &from_type, Token &token, CborWriter &writer)                           \
+    {                                                                                                                  \
+        const utype from_value = static_cast<utype>(from_type);                                                        \
+        TypeHandler<utype>::fromCbor(from_value, token, writer);                                                       \
     }                                                                                                                  \
   };                                                                                                                   \
   }
@@ -2329,24 +2428,44 @@ inline Error TypeHandler<T, Enable>::to(T &to_type, ParseContext &context)
   return error;
 }
 
-template <typename T, typename Enable>
-void TypeHandler<T, Enable>::from(const T &from_type, Token &token, Serializer &serializer)
+namespace Internal
+{
+template <typename WriterT, typename T>
+inline void serializeStructMembers(const T &from_type, Token &token, WriterT &writer)
 {
   static const char objectStart[] = "{";
   static const char objectEnd[] = "}";
   token.value_type = Type::ObjectStart;
   token.value = DataRef(objectStart);
-  serializer.write(token);
-  auto members = Internal::StructifyBaseDummy<T, T>::stfy_static_meta_data_info();
+  writer.write(token);
+  auto members = StructifyBaseDummy<T, T>::stfy_static_meta_data_info();
   using MembersType = decltype(members);
-  Internal::MemberChecker<T, MembersType, 0, MembersType::size - 1>::serializeMembers(from_type, members, token,
-                                                                                      serializer, "");
+  MemberChecker<T, MembersType, 0, MembersType::size - 1>::serializeMembers(from_type, members, token, writer, "");
   token.name.size = 0;
   token.name.data = "";
   token.name_type = Type::String;
   token.value_type = Type::ObjectEnd;
   token.value = DataRef(objectEnd);
-  serializer.write(token);
+  writer.write(token);
+}
+} // namespace Internal
+
+template <typename T, typename Enable>
+void TypeHandler<T, Enable>::from(const T &from_type, Token &token, Serializer &serializer)
+{
+  Internal::serializeStructMembers(from_type, token, serializer);
+}
+
+template <typename T, typename Enable>
+void TypeHandler<T, Enable>::fromYaml(const T &from_type, Token &token, YamlWriter &writer)
+{
+  Internal::serializeStructMembers(from_type, token, writer);
+}
+
+template <typename T, typename Enable>
+void TypeHandler<T, Enable>::fromCbor(const T &from_type, Token &token, CborWriter &writer)
+{
+  Internal::serializeStructMembers(from_type, token, writer);
 }
 
 namespace Internal
@@ -2386,12 +2505,26 @@ struct EnumHandler
     return Error::IllegalDataValue;
   }
 
-  static inline void from(const T &from_type, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static inline void serializeWith(const T &from_type, Token &token, WriterT &writer)
   {
     size_t i = static_cast<size_t>(from_type);
     token.value = F::strings()[i];
     token.value_type = Type::String;
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static inline void from(const T &from_type, Token &token, Serializer &serializer)
+  {
+    serializeWith(from_type, token, serializer);
+  }
+  static inline void fromYaml(const T &from_type, Token &token, YamlWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
+  }
+  static inline void fromCbor(const T &from_type, Token &token, CborWriter &writer)
+  {
+    serializeWith(from_type, token, writer);
   }
 };
 } // namespace Internal
@@ -2576,6 +2709,60 @@ struct TypeHandler<std::string>
     token.value.size = ref.size;
     serializer.write(token);
   }
+
+  static inline void fromYaml(const std::string &str, Token &token, YamlWriter &writer)
+  {
+    // Pass raw string — YamlWriter handles quoting
+    token.value_type = Type::String;
+    token.value.data = str.data();
+    token.value.size = str.size();
+    writer.write(token);
+  }
+
+  static inline void fromCbor(const std::string &str, Token &token, CborWriter &writer)
+  {
+    // Pass raw string — CborWriter handles binary encoding
+    token.value_type = Type::String;
+    token.value.data = str.data();
+    token.value.size = str.size();
+    writer.write(token);
+  }
 };
+
+// --- YAML serialization ---
+
+struct YamlSerializerContext
+{
+  YamlSerializerContext(std::string &yaml_out_p)
+    : writer(yaml_out_p)
+    , yaml_out(yaml_out_p)
+  {
+  }
+
+  YamlWriter writer;
+  std::string &yaml_out;
+};
+
+template <typename T>
+STFY_NODISCARD std::string serializeStructYaml(const T &from_type)
+{
+  std::string ret_string;
+  YamlWriter writer(ret_string);
+  Token token;
+  TypeHandler<T>::fromYaml(from_type, token, writer);
+  return ret_string;
+}
+
+// --- CBOR serialization ---
+
+template <typename T>
+STFY_NODISCARD std::vector<uint8_t> serializeStructCbor(const T &from_type)
+{
+  std::vector<uint8_t> ret_data;
+  CborWriter writer(ret_data);
+  Token token;
+  TypeHandler<T>::fromCbor(from_type, token, writer);
+  return ret_data;
+}
 
 } // namespace STFY

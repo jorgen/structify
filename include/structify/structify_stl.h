@@ -68,20 +68,34 @@ public:
       return STFY::Error::ExpectedArrayEnd;
     return context.error;
   }
-  static void from(const std::array<T,N> &from, Token &token, Serializer &serializer)
+  template <typename WriterT>
+  static void serializeWith(const std::array<T,N> &from, Token &token, WriterT &writer)
   {
     token.value_type = Type::ArrayStart;
     token.value = DataRef("[");
-    serializer.write(token);
+    writer.write(token);
 
     token.name = DataRef("");
     for (size_t i = 0; i < N; i++)
-      TypeHandler<T>::from(from[i], token, serializer);
+      WriterDispatch<WriterT>::template call<T>(from[i], token, writer);
 
     token.name = DataRef("");
     token.value_type = Type::ArrayEnd;
     token.value = DataRef("]");
-    serializer.write(token);
+    writer.write(token);
+  }
+
+  static void from(const std::array<T,N> &from, Token &token, Serializer &serializer)
+  {
+    serializeWith(from, token, serializer);
+  }
+  static void fromYaml(const std::array<T,N> &from, Token &token, YamlWriter &writer)
+  {
+    serializeWith(from, token, writer);
+  }
+  static void fromCbor(const std::array<T,N> &from, Token &token, CborWriter &writer)
+  {
+    serializeWith(from, token, writer);
   }
 };
 } // namespace STFY

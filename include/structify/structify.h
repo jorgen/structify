@@ -28,6 +28,8 @@
 #include "structify_tokenizer.h"
 #include "structify_yaml.h"
 #include "structify_cbor.h"
+#include "structify_yaml_writer.h"
+#include "structify_cbor_writer.h"
 #include "structify_meta.h"
 #include "structify_type_handlers.h"
 
