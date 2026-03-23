@@ -1,7 +1,7 @@
 # **Structurize your JSON**
 
 [![CI](https://github.com/jorgen/structify/actions/workflows/ci.yml/badge.svg)](https://github.com/jorgen/structify/actions/workflows/ci.yml)
-[![ClusterFuzzLite PR fuzzing](https://github.com/jorgen/structify/actions/workflows/cflite_pr.yml/badge.svg)](https://github.com/jorgen/structify/actions/workflows/cflite_pr.yml)
+[![Sanitizers](https://github.com/jorgen/structify/actions/workflows/build_and_test_with_sanitizers.yml/badge.svg)](https://github.com/jorgen/structify/actions/workflows/build_and_test_with_sanitizers.yml)
 
 structify is a single-header C++ library that parses JSON to structs/classes and serializes structs/classes back to JSON. With support for relaxed parsing rules, it's also excellent for configuration files and human-editable data formats.
 
@@ -331,5 +331,6 @@ This gives complete control over serialization/deserialization and can represent
 
 **Dynamic Analysis:**
 All pull requests are tested with:
-* [Clang Address Sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
-* [Clang Memory Sanitizer](https://clang.llvm.org/docs/MemorySanitizer.html)
+* [AddressSanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
+* [ThreadSanitizer](https://clang.llvm.org/docs/ThreadSanitizer.html)
+* [UndefinedBehaviorSanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html)
