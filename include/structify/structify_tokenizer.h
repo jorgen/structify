@@ -1044,7 +1044,9 @@ public:
   enum Style : unsigned char
   {
     Pretty,
-    Compact
+    Compact,
+    Relaxed,
+    RelaxedCompact
   };
 
   SerializerOptions(Style style = Style::Pretty);
@@ -1061,6 +1063,8 @@ public:
   unsigned char depth() const;
   void setDepth(int depth);
 
+  bool trailingComma() const;
+
   void skipDelimiter(bool skip);
 
   const std::string &prefix() const;
@@ -1073,6 +1077,7 @@ private:
   uint8_t m_depth;
   Style m_style;
   bool m_convert_ascii_to_string;
+  bool m_trailing_comma;
 
   std::string m_prefix;
   std::string m_token_delimiter;
@@ -2475,13 +2480,14 @@ constexpr Tuple<Ts...> makeTuple(Ts... args)
 
 inline SerializerOptions::SerializerOptions(Style style)
 
-  : m_shift_size(style == Compact ? 0 : 2)
+  : m_shift_size(style == Compact || style == RelaxedCompact ? 0 : 2)
   , m_depth(0)
   , m_style(style)
-  , m_convert_ascii_to_string(true)
+  , m_convert_ascii_to_string(style == Pretty || style == Compact)
+  , m_trailing_comma(style == Relaxed || style == RelaxedCompact)
   , m_token_delimiter(",")
-  , m_value_delimiter(style == Pretty ? ": " : ":")
-  , m_postfix(style == Pretty ? "\n" : "")
+  , m_value_delimiter(style == Pretty || style == Relaxed ? ": " : ":")
+  , m_postfix(style == Pretty || style == Relaxed ? "\n" : "")
 {
 }
 
@@ -2513,6 +2519,11 @@ inline bool SerializerOptions::convertAsciiToString() const
 inline void SerializerOptions::setConvertAsciiToString(bool set)
 {
   m_convert_ascii_to_string = set;
+}
+
+inline bool SerializerOptions::trailingComma() const
+{
+  return m_trailing_comma;
 }
 
 inline void SerializerOptions::setStyle(Style style)
@@ -2622,7 +2633,7 @@ inline bool Serializer::write(const Token &in_token)
   bool shortcut_front = false;
   if (m_option.shiftSize() == 2 && !m_first)
   {
-    if (!m_token_start && !isEnd)
+    if (!m_token_start && (!isEnd || m_option.trailingComma()))
     {
       if (m_option.depth() == 1)
         shortcut_front = write(begining_literals.get<5>());
@@ -2655,7 +2666,7 @@ inline bool Serializer::write(const Token &in_token)
   {
     if (!m_token_start)
     {
-      if (!isEnd)
+      if (!isEnd || m_option.trailingComma())
       {
         if (!m_option.tokenDelimiter().empty())
         {
@@ -2687,7 +2698,7 @@ inline bool Serializer::write(const Token &in_token)
     if (!write(token.name_type, token.name))
       return false;
 
-    if (m_option.style() == SerializerOptions::Pretty)
+    if (m_option.style() == SerializerOptions::Pretty || m_option.style() == SerializerOptions::Relaxed)
     {
       if (!write(Internal::makeStringLiteral(": ")))
         return false;
