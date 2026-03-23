@@ -706,7 +706,7 @@ score: 95.5
   ctx1.tokenizer.allowYaml(true);
   ctx1.tokenizer.addData(yaml_input, sizeof(yaml_input) - 1);
   SimpleStruct s1;
-  ctx1.parseTo(s1);
+  (void)ctx1.parseTo(s1);
   REQUIRE(ctx1.error == STFY::Error::NoError);
 
   // Serialize
@@ -717,7 +717,7 @@ score: 95.5
   ctx2.tokenizer.allowYaml(true);
   ctx2.tokenizer.addData(yaml_out.c_str(), yaml_out.size());
   SimpleStruct s2;
-  ctx2.parseTo(s2);
+  (void)ctx2.parseTo(s2);
   REQUIRE(ctx2.error == STFY::Error::NoError);
 
   // Compare data
@@ -738,7 +738,7 @@ address:
   ctx1.tokenizer.allowYaml(true);
   ctx1.tokenizer.addData(yaml_input, sizeof(yaml_input) - 1);
   NestedOuter s1;
-  ctx1.parseTo(s1);
+  (void)ctx1.parseTo(s1);
   REQUIRE(ctx1.error == STFY::Error::NoError);
 
   std::string yaml_out = STFY::serializeStructYaml(s1);
@@ -747,7 +747,7 @@ address:
   ctx2.tokenizer.allowYaml(true);
   ctx2.tokenizer.addData(yaml_out.c_str(), yaml_out.size());
   NestedOuter s2;
-  ctx2.parseTo(s2);
+  (void)ctx2.parseTo(s2);
   REQUIRE(ctx2.error == STFY::Error::NoError);
 
   REQUIRE(s2.name == s1.name);
@@ -770,7 +770,7 @@ hobbies:
   ctx1.tokenizer.allowYaml(true);
   ctx1.tokenizer.addData(yaml_input, sizeof(yaml_input) - 1);
   MixedStruct s1;
-  ctx1.parseTo(s1);
+  (void)ctx1.parseTo(s1);
   REQUIRE(ctx1.error == STFY::Error::NoError);
 
   std::string yaml_out = STFY::serializeStructYaml(s1);
@@ -779,7 +779,7 @@ hobbies:
   ctx2.tokenizer.allowYaml(true);
   ctx2.tokenizer.addData(yaml_out.c_str(), yaml_out.size());
   MixedStruct s2;
-  ctx2.parseTo(s2);
+  (void)ctx2.parseTo(s2);
   REQUIRE(ctx2.error == STFY::Error::NoError);
 
   REQUIRE(s2.name == s1.name);

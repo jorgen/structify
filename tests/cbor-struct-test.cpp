@@ -89,7 +89,7 @@ TEST_CASE("cbor_parse_simple_struct", "[cbor][struct]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   SimpleStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
@@ -125,7 +125,7 @@ TEST_CASE("cbor_parse_nested_struct", "[cbor][struct]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   NestedOuter s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Alice");
@@ -153,7 +153,7 @@ TEST_CASE("cbor_parse_with_vector", "[cbor][struct]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithVector s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Bob");
@@ -179,7 +179,7 @@ TEST_CASE("cbor_parse_booleans", "[cbor][struct]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithBooleans s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.enabled == true);
@@ -204,7 +204,7 @@ TEST_CASE("cbor_parse_optional_present", "[cbor][struct]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithOptional s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Eve");
@@ -226,7 +226,7 @@ TEST_CASE("cbor_parse_optional_missing", "[cbor][struct]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithOptional s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Eve");
@@ -265,7 +265,7 @@ TEST_CASE("cbor_parse_mixed_struct", "[cbor][struct]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   MixedStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Charlie");
@@ -294,7 +294,7 @@ TEST_CASE("cbor_parse_negative_int", "[cbor][struct]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   SimpleStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "test");
@@ -322,7 +322,7 @@ TEST_CASE("cbor_parse_float64_value", "[cbor][struct]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   SimpleStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "pi");
