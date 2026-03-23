@@ -1,5 +1,4 @@
 include_directories(${STRUCTIFY_INCLUDE_DIR})
-include_directories(SYSTEM ${float_tools_SOURCE_DIR}/include)
 
 include(Catch)
 
@@ -111,7 +110,6 @@ if ("${CMAKE_CXX_COMPILE_FEATURES}" MATCHES ".*cxx_std_17.*")
   set_property(TARGET yaml-suite-tests PROPERTY CXX_STANDARD 17)
   target_compile_features(yaml-suite-tests PUBLIC cxx_std_17)
   target_include_directories(yaml-suite-tests PRIVATE ${STRUCTIFY_INCLUDE_DIR})
-  target_include_directories(yaml-suite-tests SYSTEM PRIVATE ${float_tools_SOURCE_DIR}/include)
   target_compile_definitions(yaml-suite-tests PRIVATE
     YAML_TEST_SUITE_DIR="${yaml_test_suite_SOURCE_DIR}")
   if (MSVC)

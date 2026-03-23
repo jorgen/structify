@@ -55,15 +55,6 @@ set(STRUCTIFY_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 include(FetchContent)
 
 FetchContent_Declare(
-  float_tools
-  GIT_REPOSITORY https://github.com/jorgen/float_tools.git
-  GIT_TAG master
-  GIT_SHALLOW TRUE
-  SOURCE_SUBDIR _no_cmakelists_
-)
-FetchContent_MakeAvailable(float_tools)
-
-FetchContent_Declare(
 catch2
 GIT_REPOSITORY https://github.com/catchorg/Catch2.git
 GIT_TAG v3.11.0
@@ -119,9 +110,6 @@ target_include_directories(${PROJECT_NAME}
         INTERFACE
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_include_directories(${PROJECT_NAME}
-        SYSTEM INTERFACE
-            $<BUILD_INTERFACE:${float_tools_SOURCE_DIR}/include>)
 
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
 set(CPACK_PACKAGE_DESCRIPTION "${PROJECT_DESCRIPTION}")
@@ -190,9 +178,14 @@ if(STRUCTIFY_OPT_INSTALL)
 
 
 
-    file(GLOB HEADERS_TO_INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/include/structify/*)
+    file(GLOB HEADERS_TO_INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/include/structify/*.h)
     install(FILES ${HEADERS_TO_INSTALL}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+    )
+
+    file(GLOB FLOAT_TOOLS_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/include/structify/float_tools/*.h)
+    install(FILES ${FLOAT_TOOLS_HEADERS}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/float_tools
     )
 
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/package.xml

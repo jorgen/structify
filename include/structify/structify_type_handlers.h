@@ -1,6 +1,6 @@
 #pragma once
 #include "structify_meta.h"
-#include <float_tools.h>
+#include "float_tools/float_tools.h"
 
 namespace STFY
 {
