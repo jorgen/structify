@@ -1065,7 +1065,16 @@ namespace ft
       }
       else
       {
+#ifdef __cpp_if_constexpr
+        if constexpr (NoDigitCount)
+        {
+          parsedString.significand = parsedString.significand * T(10) + T(int(*current) - '0');
+          parsedString.significand_digit_count++;
+        }
+        else if (parsedString.significand_digit_count < 19)
+#else
         if (NoDigitCount || parsedString.significand_digit_count < 19)
+#endif
         {
           parsedString.significand = parsedString.significand * T(10) + T(int(*current) - '0');
           parsedString.significand_digit_count++;
@@ -1079,7 +1088,7 @@ namespace ft
 
           if (biggest_multiplier >= 10)
           {
-            parsedString.significand = parsedString.significand * uint64_t(10) + digit;
+            parsedString.significand = static_cast<T>(parsedString.significand * uint64_t(10) + digit);
             parsedString.significand_digit_count++;
           }
         }
