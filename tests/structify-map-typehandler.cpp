@@ -1,6 +1,6 @@
 #define STFY_STL_UNORDERED_SET
 #include <structify/structify.h>
-#include <float_tools.h>
+#include <structify/float_tools/float_tools.h>
 #include "catch2/catch_all.hpp"
 
 namespace STFY

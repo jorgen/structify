@@ -108,7 +108,7 @@ score: 95.5
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
@@ -129,7 +129,7 @@ address:
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   NestedOuter s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
@@ -151,7 +151,7 @@ scores:
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   WithVector s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "test");
@@ -174,7 +174,7 @@ TEST_CASE("yaml_parse_vector_of_strings", "[yaml][struct]")
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   WithStringVector s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.items.size() == 3);
@@ -198,7 +198,7 @@ TEST_CASE("yaml_parse_vector_of_structs", "[yaml][struct]")
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   std::vector<Person> people;
-  context.parseTo(people);
+  (void)context.parseTo(people);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(people.size() == 3);
@@ -223,7 +223,7 @@ debug: no
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   WithBooleans s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.enabled == true);
@@ -243,7 +243,7 @@ age: 30
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   WithOptional s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
@@ -263,7 +263,7 @@ TEST_CASE("yaml_parse_deeply_nested", "[yaml][struct]")
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   DeepNested s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.level2.level3.value == "deep");
@@ -285,7 +285,7 @@ hobbies:
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   MixedStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "Alice");
@@ -310,7 +310,7 @@ score: 100.0
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
@@ -329,7 +329,7 @@ nums: [1, 2, 3]
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   WithFlowValues s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "test");
@@ -353,7 +353,7 @@ another: also_ignored
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
@@ -374,7 +374,7 @@ score: 100.0
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John");
@@ -393,7 +393,7 @@ score: 0.0
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "John Doe");
@@ -411,7 +411,7 @@ score: -3.14
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.age == -5);
@@ -432,7 +432,7 @@ score: 0.0
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   SimpleStruct s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "line one\nline two\n");
@@ -493,7 +493,7 @@ description: >
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   ServerConfig s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.host == "0.0.0.0");
@@ -550,7 +550,7 @@ stages:
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   Pipeline s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.version == "3");
@@ -606,7 +606,7 @@ origin: {x: 5, y: 10}
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   FlowCollections s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "shape");
@@ -647,7 +647,7 @@ single_quoted: 'it''s a test'
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   QuotedStrings s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.double_escaped == "line1\nline2\nline3");
@@ -742,7 +742,7 @@ spec:
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   PodConfig s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.kind == "Pod");
@@ -808,7 +808,7 @@ endpoints: # begin list
   context.tokenizer.addData(yaml, sizeof(yaml) - 1);
 
   CommentedConfig s;
-  context.parseTo(s);
+  (void)context.parseTo(s);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(s.name == "my-service");

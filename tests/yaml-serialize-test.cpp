@@ -397,7 +397,7 @@ TEST_CASE("yaml_roundtrip_simple_struct", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   SimpleStruct parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -419,7 +419,7 @@ TEST_CASE("yaml_roundtrip_nested_struct", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   NestedOuter parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -440,7 +440,7 @@ TEST_CASE("yaml_roundtrip_with_vector", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   WithVector parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -460,7 +460,7 @@ TEST_CASE("yaml_roundtrip_with_booleans", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   WithBooleans parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.enabled == original.enabled);
@@ -481,7 +481,7 @@ TEST_CASE("yaml_roundtrip_with_optional", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   WithOptional parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -501,7 +501,7 @@ TEST_CASE("yaml_roundtrip_deep_nested", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   DeepNested parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.level2.level3.value == original.level2.level3.value);
@@ -522,7 +522,7 @@ TEST_CASE("yaml_roundtrip_mixed_struct", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   MixedStruct parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -560,7 +560,7 @@ TEST_CASE("yaml_roundtrip_complex_k8s_like", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   PodConfig parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.kind == original.kind);
@@ -603,7 +603,7 @@ TEST_CASE("yaml_roundtrip_negative_numbers", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   SimpleStruct parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -622,7 +622,7 @@ TEST_CASE("yaml_roundtrip_empty_vector", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   EmptyVecStruct parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.items.empty());
@@ -640,7 +640,7 @@ TEST_CASE("yaml_roundtrip_string_vector", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   WithStringVector parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.items == original.items);
@@ -659,7 +659,7 @@ TEST_CASE("yaml_roundtrip_inheritance", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   Derived parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.id == original.id);
@@ -680,7 +680,7 @@ TEST_CASE("yaml_roundtrip_vector_of_structs", "[yaml][serialize][roundtrip]")
   context.tokenizer.addData(yaml.c_str(), yaml.size());
 
   PeopleWrapper parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.people.size() == 3);

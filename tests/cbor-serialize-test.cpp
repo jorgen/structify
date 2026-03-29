@@ -549,7 +549,7 @@ TEST_CASE("cbor_roundtrip_simple_struct", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   SimpleStruct parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -571,7 +571,7 @@ TEST_CASE("cbor_roundtrip_nested_struct", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   NestedOuter parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -592,7 +592,7 @@ TEST_CASE("cbor_roundtrip_with_vector", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithVector parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -612,7 +612,7 @@ TEST_CASE("cbor_roundtrip_booleans", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithBooleans parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.enabled == original.enabled);
@@ -633,7 +633,7 @@ TEST_CASE("cbor_roundtrip_optional_present", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithOptional parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -656,7 +656,7 @@ TEST_CASE("cbor_roundtrip_mixed_struct", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   MixedStruct parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -677,7 +677,7 @@ TEST_CASE("cbor_roundtrip_deep_nested", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   DeepNested parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.level2.level3.value == original.level2.level3.value);
@@ -697,7 +697,7 @@ TEST_CASE("cbor_roundtrip_negative_numbers", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   SimpleStruct parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.name == original.name);
@@ -716,7 +716,7 @@ TEST_CASE("cbor_roundtrip_empty_vector", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   EmptyVecStruct parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.items.empty());
@@ -735,7 +735,7 @@ TEST_CASE("cbor_roundtrip_with_double", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   WithDouble parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.label == original.label);
@@ -771,7 +771,7 @@ TEST_CASE("cbor_roundtrip_complex_k8s_like", "[cbor][serialize][roundtrip]")
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   PodConfig parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.kind == original.kind);
@@ -820,7 +820,7 @@ TEST_CASE("cbor_parse_serialize_reparse_simple", "[cbor][serialize][roundtrip]")
   ctx1.tokenizer.allowCbor(true);
   ctx1.tokenizer.addData((const char *)input.data(), input.size());
   SimpleStruct s1;
-  ctx1.parseTo(s1);
+  (void)ctx1.parseTo(s1);
   REQUIRE(ctx1.error == STFY::Error::NoError);
 
   // Serialize
@@ -831,7 +831,7 @@ TEST_CASE("cbor_parse_serialize_reparse_simple", "[cbor][serialize][roundtrip]")
   ctx2.tokenizer.allowCbor(true);
   ctx2.tokenizer.addData((const char *)output.data(), output.size());
   SimpleStruct s2;
-  ctx2.parseTo(s2);
+  (void)ctx2.parseTo(s2);
   REQUIRE(ctx2.error == STFY::Error::NoError);
 
   // Compare data
@@ -861,7 +861,7 @@ TEST_CASE("cbor_parse_serialize_reparse_mixed", "[cbor][serialize][roundtrip]")
   ctx1.tokenizer.allowCbor(true);
   ctx1.tokenizer.addData((const char *)input.data(), input.size());
   MixedStruct s1;
-  ctx1.parseTo(s1);
+  (void)ctx1.parseTo(s1);
   REQUIRE(ctx1.error == STFY::Error::NoError);
 
   auto output = STFY::serializeStructCbor(s1);
@@ -870,7 +870,7 @@ TEST_CASE("cbor_parse_serialize_reparse_mixed", "[cbor][serialize][roundtrip]")
   ctx2.tokenizer.allowCbor(true);
   ctx2.tokenizer.addData((const char *)output.data(), output.size());
   MixedStruct s2;
-  ctx2.parseTo(s2);
+  (void)ctx2.parseTo(s2);
   REQUIRE(ctx2.error == STFY::Error::NoError);
 
   REQUIRE(s2.name == s1.name);
@@ -979,7 +979,7 @@ TEST_CASE("cbor_roundtrip_float_exact_precision", "[cbor][serialize][roundtrip][
   context.tokenizer.addData((const char *)data.data(), data.size());
 
   SimpleStruct parsed;
-  context.parseTo(parsed);
+  (void)context.parseTo(parsed);
 
   REQUIRE(context.error == STFY::Error::NoError);
   REQUIRE(parsed.score == original.score); // exact bit equality
@@ -998,7 +998,7 @@ TEST_CASE("cbor_serialize_float_edge_cases", "[cbor][serialize][float]")
     ctx.tokenizer.allowCbor(true);
     ctx.tokenizer.addData((const char *)data.data(), data.size());
     FloatDoubleStruct p;
-    ctx.parseTo(p);
+    (void)ctx.parseTo(p);
     REQUIRE(ctx.error == STFY::Error::NoError);
     REQUIRE(p.f_val == 0.0f);
     REQUIRE(p.d_val == 0.0);
@@ -1015,7 +1015,7 @@ TEST_CASE("cbor_serialize_float_edge_cases", "[cbor][serialize][float]")
     ctx.tokenizer.allowCbor(true);
     ctx.tokenizer.addData((const char *)data.data(), data.size());
     FloatDoubleStruct p;
-    ctx.parseTo(p);
+    (void)ctx.parseTo(p);
     REQUIRE(ctx.error == STFY::Error::NoError);
     REQUIRE(p.f_val == s.f_val);
     REQUIRE(p.d_val == s.d_val);
@@ -1032,7 +1032,7 @@ TEST_CASE("cbor_serialize_float_edge_cases", "[cbor][serialize][float]")
     ctx.tokenizer.allowCbor(true);
     ctx.tokenizer.addData((const char *)data.data(), data.size());
     FloatDoubleStruct p;
-    ctx.parseTo(p);
+    (void)ctx.parseTo(p);
     REQUIRE(ctx.error == STFY::Error::NoError);
     REQUIRE(p.f_val == s.f_val);
     REQUIRE(p.d_val == s.d_val);

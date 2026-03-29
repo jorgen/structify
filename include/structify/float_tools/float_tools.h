@@ -1026,6 +1026,12 @@ namespace ft
     return false;
   }
 
+  template<bool NoDigitCount>
+  inline bool shouldAccumulateDigit(int digit_count)
+  {
+    return NoDigitCount || digit_count < 19;
+  }
+
   template<typename T, bool NoDigitCount>
   inline parse_string_error parseNumber(const char* number, size_t size, parsed_string<T> &parsedString)
   {
@@ -1065,16 +1071,7 @@ namespace ft
       }
       else
       {
-#ifdef __cpp_if_constexpr
-        if constexpr (NoDigitCount)
-        {
-          parsedString.significand = parsedString.significand * T(10) + T(int(*current) - '0');
-          parsedString.significand_digit_count++;
-        }
-        else if (parsedString.significand_digit_count < 19)
-#else
-        if (NoDigitCount || parsedString.significand_digit_count < 19)
-#endif
+        if (shouldAccumulateDigit<NoDigitCount>(parsedString.significand_digit_count))
         {
           parsedString.significand = parsedString.significand * T(10) + T(int(*current) - '0');
           parsedString.significand_digit_count++;
