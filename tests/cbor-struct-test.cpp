@@ -58,6 +58,22 @@ struct MixedStruct
   STFY_OBJ(name, age, active, hobbies);
 };
 
+struct PreInitInner
+{
+  std::string label;
+  STFY_OBJ(label);
+};
+
+struct PreInitStruct
+{
+  std::string name = "original_name";
+  int count = 42;
+  float ratio = 3.14f;
+  bool flag = true;
+  PreInitInner inner;
+  STFY_OBJ(name, count, ratio, flag, inner);
+};
+
 // Helper to build CBOR from byte list
 static std::vector<unsigned char> cbor(std::initializer_list<unsigned char> bytes)
 {
@@ -328,6 +344,92 @@ TEST_CASE("cbor_parse_float64_value", "[cbor][struct]")
   REQUIRE(s.name == "pi");
   REQUIRE(s.age == 0);
   REQUIRE(s.score == Catch::Approx(3.5f));
+}
+
+TEST_CASE("cbor_parse_unmentioned_members_preserved", "[cbor][struct]")
+{
+  // {"name": "updated", "flag": false}
+  // Deliberately omits: count, ratio, inner
+  auto data = cbor({
+    0xA2,
+    0x64, 'n', 'a', 'm', 'e',
+    0x67, 'u', 'p', 'd', 'a', 't', 'e', 'd',
+    0x64, 'f', 'l', 'a', 'g',
+    0xF4
+  });
+
+  STFY::ParseContext context;
+  context.tokenizer.allowCbor(true);
+  context.tokenizer.addData((const char *)data.data(), data.size());
+
+  PreInitStruct s;
+  s.inner.label = "original_label";
+  (void)context.parseTo(s);
+
+  REQUIRE(context.error == STFY::Error::NoError);
+  // Mentioned members are updated
+  REQUIRE(s.name == "updated");
+  REQUIRE(s.flag == false);
+  // Unmentioned members retain pre-initialized values
+  REQUIRE(s.count == 42);
+  REQUIRE(s.ratio == Catch::Approx(3.14f));
+  REQUIRE(s.inner.label == "original_label");
+}
+
+TEST_CASE("cbor_report_missing_members", "[cbor][struct]")
+{
+  // {"name": "John", "age": 30, "score": float32(95.5), "extra_field": "ignored"}
+  auto data = cbor({
+    0xA4,
+    0x64, 'n', 'a', 'm', 'e',
+    0x64, 'J', 'o', 'h', 'n',
+    0x63, 'a', 'g', 'e',
+    0x18, 0x1E,
+    0x65, 's', 'c', 'o', 'r', 'e',
+    0xFA, 0x42, 0xBF, 0x00, 0x00,
+    0x6B, 'e', 'x', 't', 'r', 'a', '_', 'f', 'i', 'e', 'l', 'd',
+    0x67, 'i', 'g', 'n', 'o', 'r', 'e', 'd'
+  });
+
+  STFY::ParseContext context;
+  context.tokenizer.allowCbor(true);
+  context.tokenizer.addData((const char *)data.data(), data.size());
+
+  SimpleStruct s;
+  (void)context.parseTo(s);
+
+  REQUIRE(context.error == STFY::Error::NoError);
+  REQUIRE(s.name == "John");
+  REQUIRE(s.age == 30);
+  REQUIRE(s.score == Catch::Approx(95.5f));
+  REQUIRE(context.missing_members.size() == 1);
+  REQUIRE(context.missing_members.front() == "extra_field");
+}
+
+TEST_CASE("cbor_report_unassigned_required_members", "[cbor][struct]")
+{
+  // {"name": "John", "age": 30}
+  // Omits "score" which is a required member
+  auto data = cbor({
+    0xA2,
+    0x64, 'n', 'a', 'm', 'e',
+    0x64, 'J', 'o', 'h', 'n',
+    0x63, 'a', 'g', 'e',
+    0x18, 0x1E
+  });
+
+  STFY::ParseContext context;
+  context.tokenizer.allowCbor(true);
+  context.tokenizer.addData((const char *)data.data(), data.size());
+
+  SimpleStruct s;
+  (void)context.parseTo(s);
+
+  REQUIRE(context.error == STFY::Error::NoError);
+  REQUIRE(s.name == "John");
+  REQUIRE(s.age == 30);
+  REQUIRE(context.unassigned_required_members.size() == 1);
+  REQUIRE(context.unassigned_required_members.front() == "score");
 }
 
 } // namespace cbor_struct_test

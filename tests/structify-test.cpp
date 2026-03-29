@@ -282,6 +282,44 @@ TEST_CASE("check_json_error_in_sub", "structify")
   REQUIRE(sub.not_assigned.data == 999);
 }
 
+struct PreInitInner
+{
+  std::string label;
+  STFY_OBJECT(STFY_MEMBER(label));
+};
+
+struct PreInitStruct
+{
+  std::string name = "original_name";
+  int count = 42;
+  float ratio = 3.14f;
+  bool flag = true;
+  PreInitInner inner;
+  STFY_OBJECT(STFY_MEMBER(name), STFY_MEMBER(count), STFY_MEMBER(ratio),
+              STFY_MEMBER(flag), STFY_MEMBER(inner));
+};
+
+static const char json_preinit[] = R"json({
+  "name": "updated",
+  "flag": false
+})json";
+
+TEST_CASE("check_json_unmentioned_members_preserved", "structify")
+{
+  STFY::ParseContext context(json_preinit);
+  PreInitStruct s;
+  s.inner.label = "original_label";
+  auto error = context.parseTo(s);
+  REQUIRE(error == STFY::Error::NoError);
+  // Mentioned members are updated
+  REQUIRE(s.name == "updated");
+  REQUIRE(s.flag == false);
+  // Unmentioned members retain pre-initialized values
+  REQUIRE(s.count == 42);
+  REQUIRE(s.ratio == Catch::Approx(3.14f));
+  REQUIRE(s.inner.label == "original_label");
+}
+
 struct JsonObjectTester
 {
   std::string field;

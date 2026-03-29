@@ -96,6 +96,22 @@ struct WithFlowValues
   STFY_OBJ(name, nums);
 };
 
+struct PreInitInner
+{
+  std::string label;
+  STFY_OBJ(label);
+};
+
+struct PreInitStruct
+{
+  std::string name = "original_name";
+  int count = 42;
+  float ratio = 3.14f;
+  bool flag = true;
+  PreInitInner inner;
+  STFY_OBJ(name, count, ratio, flag, inner);
+};
+
 TEST_CASE("yaml_parse_simple_struct", "[yaml][struct]")
 {
   const char yaml[] = R"(name: John
@@ -819,6 +835,75 @@ endpoints: # begin list
   REQUIRE(s.endpoints[1] == "/api/v1/users");
   REQUIRE(s.endpoints[2] == "/api/v1/orders");
   REQUIRE(s.endpoints[3] == "/metrics");
+}
+
+TEST_CASE("yaml_parse_unmentioned_members_preserved", "[yaml][struct]")
+{
+  // Deliberately omits: count, ratio, inner
+  const char yaml[] = R"(name: updated
+flag: false
+)";
+
+  STFY::ParseContext context;
+  context.tokenizer.allowYaml(true);
+  context.tokenizer.addData(yaml, sizeof(yaml) - 1);
+
+  PreInitStruct s;
+  s.inner.label = "original_label";
+  (void)context.parseTo(s);
+
+  REQUIRE(context.error == STFY::Error::NoError);
+  // Mentioned members are updated
+  REQUIRE(s.name == "updated");
+  REQUIRE(s.flag == false);
+  // Unmentioned members retain pre-initialized values
+  REQUIRE(s.count == 42);
+  REQUIRE(s.ratio == Catch::Approx(3.14f));
+  REQUIRE(s.inner.label == "original_label");
+}
+
+TEST_CASE("yaml_report_missing_members", "[yaml][struct]")
+{
+  const char yaml[] = R"(name: John
+age: 30
+score: 95.5
+extra_field: ignored
+)";
+
+  STFY::ParseContext context;
+  context.tokenizer.allowYaml(true);
+  context.tokenizer.addData(yaml, sizeof(yaml) - 1);
+
+  SimpleStruct s;
+  (void)context.parseTo(s);
+
+  REQUIRE(context.error == STFY::Error::NoError);
+  REQUIRE(s.name == "John");
+  REQUIRE(s.age == 30);
+  REQUIRE(s.score == Catch::Approx(95.5f));
+  REQUIRE(context.missing_members.size() == 1);
+  REQUIRE(context.missing_members.front() == "extra_field");
+}
+
+TEST_CASE("yaml_report_unassigned_required_members", "[yaml][struct]")
+{
+  // Omits "score" which is a required member
+  const char yaml[] = R"(name: John
+age: 30
+)";
+
+  STFY::ParseContext context;
+  context.tokenizer.allowYaml(true);
+  context.tokenizer.addData(yaml, sizeof(yaml) - 1);
+
+  SimpleStruct s;
+  (void)context.parseTo(s);
+
+  REQUIRE(context.error == STFY::Error::NoError);
+  REQUIRE(s.name == "John");
+  REQUIRE(s.age == 30);
+  REQUIRE(context.unassigned_required_members.size() == 1);
+  REQUIRE(context.unassigned_required_members.front() == "score");
 }
 
 } // namespace yaml_struct_test
