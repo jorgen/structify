@@ -21,6 +21,16 @@ struct TypeHandler<double>
   template <typename WriterT>
   static inline void serializeWith(const double &d, Token &token, WriterT &writer)
   {
+    if (std::isnan(d) || std::isinf(d))
+    {
+      // JSON/YAML have no NaN/Infinity literal; emit null so the output stays valid
+      // instead of the bare "nan"/"inf" text ft::ryu produces. (CBOR uses fromCbor.)
+      static const char nullChar[] = "null";
+      token.value_type = Type::Null;
+      token.value = DataRef(nullChar);
+      writer.write(token);
+      return;
+    }
     // char buf[1/*'-'*/ + (DBL_MAX_10_EXP+1)/*308+1 digits*/ + 1/*'.'*/ + 6/*Default? precision*/ + 1/*\0*/];
     char buf[32];
     int size;
@@ -70,6 +80,15 @@ struct TypeHandler<float>
   template <typename WriterT>
   static inline void serializeWith(const float &f, Token &token, WriterT &writer)
   {
+    if (std::isnan(f) || std::isinf(f))
+    {
+      // JSON/YAML have no NaN/Infinity literal; emit null so the output stays valid.
+      static const char nullChar[] = "null";
+      token.value_type = Type::Null;
+      token.value = DataRef(nullChar);
+      writer.write(token);
+      return;
+    }
     char buf[16];
     int size;
     size = ft::ryu::to_buffer(f, buf, sizeof(buf));
@@ -109,7 +128,8 @@ struct TypeHandlerIntType
     const char *pointer;
     auto parse_error =
       ft::integer::to_integer(context.token.value.data, context.token.value.size, to_type, pointer);
-    if (parse_error != ft::parse_string_error::ok || context.token.value.data == pointer)
+    if (parse_error != ft::parse_string_error::ok ||
+        pointer != context.token.value.data + context.token.value.size)
       return Error::FailedToParseInt;
     return Error::NoError;
   }
@@ -592,10 +612,11 @@ struct TypeHandler<std::vector<T, A>>
     if (error != STFY::Error::NoError)
       return error;
     to_type.clear();
-    to_type.reserve(10);
+    if (context.token.value_type != STFY::Type::ArrayEnd)
+      to_type.reserve(10);
     while (context.token.value_type != STFY::Type::ArrayEnd)
     {
-      to_type.push_back(T());
+      to_type.emplace_back();
       error = TypeHandler<T>::to(to_type.back(), context);
       if (error != STFY::Error::NoError)
         break;
@@ -659,7 +680,7 @@ public:
     while (context.token.value_type != STFY::Type::ArrayEnd)
     {
 
-      bool toBool;
+      bool toBool = false; // TypeHandler<bool>::to leaves this unwritten on parse failure
       error = TypeHandler<bool>::to(toBool, context);
       to_type.push_back(toBool);
       if (error != STFY::Error::NoError)

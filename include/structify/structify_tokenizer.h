@@ -644,17 +644,8 @@ inline size_t skipWhitespaceAVX2(const char* STRUCTIFY_RESTRICT data, size_t len
 
     int mask = _mm256_movemask_epi8(whitespace);
 
-    if (STRUCTIFY_LIKELY(mask != 0xFFFFFFFF)) {
-#ifdef STRUCTIFY_HAS_BMI
-      int offset = _tzcnt_u32(~mask);
-#else
-      mask = ~mask;
-      int offset = 0;
-      while ((mask & 1) == 0) {
-        mask >>= 1;
-        offset++;
-      }
-#endif
+    if (STRUCTIFY_LIKELY(mask != int(0xFFFFFFFF))) {
+      int offset = int(bit_scan_forward((unsigned int)(~mask)));
       current += offset;
       return current - data;
     }
@@ -685,14 +676,7 @@ inline size_t skipCommentAVX2(const char* STRUCTIFY_RESTRICT data, size_t length
     int mask = _mm256_movemask_epi8(cmp);
 
     if (STRUCTIFY_LIKELY(mask != 0)) {
-#ifdef STRUCTIFY_HAS_BMI
-      int offset = _tzcnt_u32(mask);
-#else
-      int offset = 0;
-      while ((mask & (1 << offset)) == 0) {
-        offset++;
-      }
-#endif
+      int offset = int(bit_scan_forward((unsigned int)mask));
       current += offset;
       return current - data + 1;
     }
@@ -726,14 +710,7 @@ inline size_t findStringEndAVX2(const char* STRUCTIFY_RESTRICT data, size_t leng
 
     int mask = _mm256_movemask_epi8(combined_mask);
     if (STRUCTIFY_LIKELY(mask != 0)) {
-#ifdef STRUCTIFY_HAS_BMI
-      int offset = _tzcnt_u32(mask);
-#else
-      int offset = 0;
-      while ((mask & (1 << offset)) == 0) {
-        offset++;
-      }
-#endif
+      int offset = int(bit_scan_forward((unsigned int)mask));
       current += offset;
       break;
     }
@@ -816,16 +793,8 @@ inline size_t findAsciiEndAVX2(const char* STRUCTIFY_RESTRICT data, size_t lengt
 
     int mask = _mm256_movemask_epi8(valid_chars);
 
-    if (STRUCTIFY_LIKELY(mask != 0xFFFFFFFF)) {
-#ifdef STRUCTIFY_HAS_BMI
-      int offset = _tzcnt_u32(~mask);
-#else
-      mask = ~mask;
-      int offset = 0;
-      while ((mask & (1 << offset)) == 0) {
-        offset++;
-      }
-#endif
+    if (STRUCTIFY_LIKELY(mask != int(0xFFFFFFFF))) {
+      int offset = int(bit_scan_forward((unsigned int)(~mask)));
       current += offset;
       return current - data;
     }
@@ -1420,6 +1389,14 @@ STRUCTIFY_FORCE_INLINE void Tokenizer::resetForNewValue()
 
 STRUCTIFY_FORCE_INLINE Error Tokenizer::findStringEnd(const DataRef &json_data, size_t *chars_ahead)
 {
+#if defined(STRUCTIFY_HAS_AVX2) || defined(STRUCTIFY_HAS_NEON) || defined(STRUCTIFY_HAS_SSE2)
+  // The SIMD scan below mutates is_escaped across the whole remaining buffer. When
+  // it does not find the closing quote we fall through to the scalar scan starting
+  // again from cursor_index, which must re-derive escape state from the ORIGINAL
+  // value -- re-running the state machine from the SIMD end-state would flip escape
+  // parity for a string crossing a streaming buffer boundary. Snapshot and restore.
+  const bool escaped_before_simd = is_escaped;
+#endif
 #ifdef STRUCTIFY_HAS_AVX2
   if (STRUCTIFY_LIKELY(json_data.size - cursor_index >= 32)) {
     size_t consumed = Internal::findStringEndAVX2(
@@ -1451,6 +1428,12 @@ STRUCTIFY_FORCE_INLINE Error Tokenizer::findStringEnd(const DataRef &json_data, 
       return Error::NoError;
     }
   }
+#endif
+
+#if defined(STRUCTIFY_HAS_AVX2) || defined(STRUCTIFY_HAS_NEON) || defined(STRUCTIFY_HAS_SSE2)
+  // Restore the escape state the SIMD scan re-mutated, so the scalar fallback
+  // re-derives it correctly from cursor_index.
+  is_escaped = escaped_before_simd;
 #endif
 
   size_t end = cursor_index;
@@ -1501,6 +1484,10 @@ STRUCTIFY_FORCE_INLINE Error Tokenizer::findAsciiEnd(const DataRef &json_data, s
 
     if (consumed < json_data.size - cursor_index) {
       *chars_ahead = consumed;
+      // Match the scalar path: an ascii token terminated by an embedded NUL is
+      // treated as incomplete (NeedMoreData), not finalized.
+      if (json_data.data[cursor_index + consumed] == '\0')
+        return Error::NeedMoreData;
       return Error::NoError;
     }
     end = cursor_index + consumed;
@@ -1513,6 +1500,10 @@ STRUCTIFY_FORCE_INLINE Error Tokenizer::findAsciiEnd(const DataRef &json_data, s
 
     if (consumed < json_data.size - cursor_index) {
       *chars_ahead = consumed;
+      // Match the scalar path: an ascii token terminated by an embedded NUL is
+      // treated as incomplete (NeedMoreData), not finalized.
+      if (json_data.data[cursor_index + consumed] == '\0')
+        return Error::NeedMoreData;
       return Error::NoError;
     }
     end = cursor_index + consumed;
@@ -1830,21 +1821,21 @@ STRUCTIFY_FORCE_INLINE Error Tokenizer::findTokenEnd(const DataRef &json_data, s
   // Skip whitespace using SIMD if available
   size_t end = cursor_index;
 #ifdef STRUCTIFY_HAS_AVX2
-  if (STRUCTIFY_LIKELY(json_data.size - end >= 32 && !allow_ascii_properties)) {
+  if (STRUCTIFY_LIKELY(json_data.size - end >= 32 && !allow_new_lines && !allow_ascii_properties)) {
     size_t ws_skipped = Internal::skipWhitespaceAVX2(
       json_data.data + end,
       json_data.size - end);
     end += ws_skipped;
   }
 #elif defined(STRUCTIFY_HAS_NEON)
-  if (STRUCTIFY_LIKELY(json_data.size - end >= 16 && !allow_ascii_properties)) {
+  if (STRUCTIFY_LIKELY(json_data.size - end >= 16 && !allow_new_lines && !allow_ascii_properties)) {
     size_t ws_skipped = Internal::skipWhitespaceNEON(
       json_data.data + end,
       json_data.size - end);
     end += ws_skipped;
   }
 #elif defined(STRUCTIFY_HAS_SSE2)
-  if (STRUCTIFY_LIKELY(json_data.size - end >= 16 && !allow_ascii_properties)) {
+  if (STRUCTIFY_LIKELY(json_data.size - end >= 16 && !allow_new_lines && !allow_ascii_properties)) {
     size_t ws_skipped = Internal::skipWhitespaceSIMD(
       json_data.data + end,
       json_data.size - end);
@@ -2633,7 +2624,7 @@ inline bool Serializer::write(const Token &in_token)
   bool shortcut_front = false;
   if (m_option.shiftSize() == 2 && !m_first)
   {
-    if (!m_token_start && (!isEnd || m_option.trailingComma()))
+    if (!m_token_start && (!isEnd || m_option.trailingComma()) && !m_option.tokenDelimiter().empty())
     {
       if (m_option.depth() == 1)
         shortcut_front = write(begining_literals.get<5>());

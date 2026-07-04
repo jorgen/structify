@@ -57,6 +57,8 @@ set(unit_test_sources
                            structify-nested.cpp
                            structify-map-typehandler.cpp
                            structify-tokenizer-invalid-json.cpp
+                           structify-unicode-escape.cpp
+                           structify-optimization-fixes.cpp
                            yaml-tokenizer-test.cpp
                            yaml-struct-test.cpp
                            cbor-tokenizer-test.cpp

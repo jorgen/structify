@@ -877,6 +877,18 @@ struct NameChecker<NameTuple, 0>
   }
 };
 
+// Error::MissingPropertyMember doubles as the internal "this member name did not
+// match, keep scanning" sentinel. Once a member NAME has matched, the nested parse
+// must not be allowed to hand that sentinel back to the caller -- otherwise the
+// caller keeps scanning sibling members while the tokenizer is positioned inside
+// the half-parsed child (silent data corruption / desync in strict mode). Remap a
+// matched-member's MissingPropertyMember to the distinct Error::UnknownPropertyMember
+// so scanning stops and it propagates out.
+static STRUCTIFY_FORCE_INLINE Error matchedMemberResult(Error nested)
+{
+  return nested == Error::MissingPropertyMember ? Error::UnknownPropertyMember : nested;
+}
+
 template <typename T, typename MI_T, typename MI_M, typename MI_NC>
 inline Error unpackMember(T &to_type, const MemberInfo<MI_T, MI_M, MI_NC> &memberInfo, ParseContext &context,
                           size_t index, bool primary, bool *assigned_members)
@@ -886,7 +898,7 @@ inline Error unpackMember(T &to_type, const MemberInfo<MI_T, MI_M, MI_NC> &membe
     if (compareDataRefWithStringLiteral(memberInfo.names.template get<0>(), context.token.name))
     {
       assigned_members[index] = true;
-      return TypeHandler<MI_T>::to(to_type.*memberInfo.member, context);
+      return matchedMemberResult(TypeHandler<MI_T>::to(to_type.*memberInfo.member, context));
     }
   }
   else
@@ -894,7 +906,7 @@ inline Error unpackMember(T &to_type, const MemberInfo<MI_T, MI_M, MI_NC> &membe
     if (NameChecker<MI_NC, MI_NC::size>::compare(memberInfo.names, context.token.name))
     {
       assigned_members[index] = true;
-      return TypeHandler<MI_T>::to(to_type.*memberInfo.member, context);
+      return matchedMemberResult(TypeHandler<MI_T>::to(to_type.*memberInfo.member, context));
     }
   }
   return Error::MissingPropertyMember;
@@ -1224,8 +1236,6 @@ static bool skipArrayOrObject(ParseContext &context)
 template <typename T>
 STFY_NODISCARD inline Error ParseContext::parseTo(T &to_type)
 {
-  missing_members.reserve(10);
-  unassigned_required_members.reserve(10);
   error = tokenizer.nextTokens(&token, 1).error;
   if (error != STFY::Error::NoError)
     return error;
@@ -2393,7 +2403,11 @@ inline Error TypeHandler<T, Enable>::to(T &to_type, ParseContext &context)
     {
 
       if (context.track_member_assignement_state)
+      {
+        if (context.missing_members.empty())
+          context.missing_members.reserve(16);
         context.missing_members.emplace_back(token_name.data, token_name.data + token_name.size);
+      }
       if (context.allow_missing_members)
       {
         Internal::skipArrayOrObject(context);
@@ -2563,8 +2577,11 @@ static void handle_json_escapes_in(const DataRef &ref, std::string &to_type)
     }
     to_type.insert(to_type.end(), it, next_it);
     size -= next_it - it;
-    if (!size)
+    if (size < 2)
     {
+      // A lone trailing backslash cannot begin a valid escape; drop it instead of
+      // underflowing size_t on the "size -= 2" below (which would turn the next
+      // memchr into an out-of-bounds read).
       break;
     }
     size -= 2;
@@ -2590,26 +2607,67 @@ static void handle_json_escapes_in(const DataRef &ref, std::string &to_type)
       }
       if (ok)
       {
-        if (hex[0] || hex[1] & 0x08)
+        unsigned int cp = (static_cast<unsigned int>(hex[0]) << 12) | (static_cast<unsigned int>(hex[1]) << 8) |
+                          (static_cast<unsigned int>(hex[2]) << 4) | static_cast<unsigned int>(hex[3]);
+        size_t hex_consumed = 4; // hex digits after the leading "\u"
+
+        // UTF-16 surrogate pair: a high surrogate (0xD800..0xDBFF) followed by
+        // "\uXXXX" with a low surrogate (0xDC00..0xDFFF) encodes one astral code
+        // point. size still counts bytes from next_it+2, of which 4 are the current
+        // hex digits, so a trailing "\uXXXX" needs 6 more (size >= 10).
+        if (cp >= 0xD800 && cp <= 0xDBFF && size >= 10 && next_it[6] == '\\' && next_it[7] == 'u')
         {
-          // code points: 0x0800 .. 0xffff
-          to_type.push_back(0xd0 | hex[0]);
-          to_type.push_back(0x80 | (hex[1] << 2) | ((hex[2] & 0x0c) >> 2));
-          to_type.push_back(0x80 | ((hex[2] & 0x03) << 4) | hex[3]);
+          unsigned char lo[4];
+          bool lo_ok = true;
+          for (int k = 0; lo_ok && k < 4; k++)
+          {
+            const char d = *(next_it + 8 + k);
+            if (d >= '0' && d <= '9')
+              lo[k] = (d - '0');
+            else if (d >= 'A' && d <= 'F')
+              lo[k] = (d - 'A') + 10;
+            else if (d >= 'a' && d <= 'f')
+              lo[k] = (d - 'a') + 10;
+            else
+              lo_ok = false;
+          }
+          unsigned int lo_cp = (static_cast<unsigned int>(lo[0]) << 12) | (static_cast<unsigned int>(lo[1]) << 8) |
+                               (static_cast<unsigned int>(lo[2]) << 4) | static_cast<unsigned int>(lo[3]);
+          if (lo_ok && lo_cp >= 0xDC00 && lo_cp <= 0xDFFF)
+          {
+            cp = 0x10000u + ((cp - 0xD800u) << 10) + (lo_cp - 0xDC00u);
+            hex_consumed = 10; // 4 high hex + "\u" + 4 low hex
+          }
         }
-        else if (hex[1] || hex[2] & 0x08)
+
+        if (cp >= 0x10000u)
         {
-          // code points: 0x0080 .. 0x07ff
-          to_type.push_back(0xc0 | (hex[1] << 2) | ((hex[2] & 0x0c) >> 2));
-          to_type.push_back(0x80 | ((hex[2] & 0x03) << 4) | hex[3]);
+          // code points: 0x10000 .. 0x10ffff (4-byte)
+          to_type.push_back(static_cast<char>(0xf0 | (cp >> 18)));
+          to_type.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3f)));
+          to_type.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3f)));
+          to_type.push_back(static_cast<char>(0x80 | (cp & 0x3f)));
+        }
+        else if (cp >= 0x0800u)
+        {
+          // code points: 0x0800 .. 0xffff (3-byte)
+          to_type.push_back(static_cast<char>(0xe0 | (cp >> 12)));
+          to_type.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3f)));
+          to_type.push_back(static_cast<char>(0x80 | (cp & 0x3f)));
+        }
+        else if (cp >= 0x0080u)
+        {
+          // code points: 0x0080 .. 0x07ff (2-byte)
+          to_type.push_back(static_cast<char>(0xc0 | (cp >> 6)));
+          to_type.push_back(static_cast<char>(0x80 | (cp & 0x3f)));
         }
         else
         {
-          // code points: 0x0000 .. 0x007f
-          to_type.push_back((hex[2] << 4) | hex[3]);
+          // code points: 0x0000 .. 0x007f (1-byte)
+          to_type.push_back(static_cast<char>(cp));
         }
-        it = next_it + 6; // advance past hex digits
-        size -= 4;
+        it = next_it + 2 + hex_consumed; // advance past "\u" and hex digits
+        size -= hex_consumed;
       }
       else
       {
@@ -2629,60 +2687,112 @@ static void handle_json_escapes_in(const DataRef &ref, std::string &to_type)
   }
 }
 
+// Returns the offset of the first character in [data, data+len) that needs JSON
+// string escaping (byte <= 0x0d, '"', or '\\'), or len if none. The clean run is
+// by far the common case, so scan it with SIMD when available.
+static STRUCTIFY_FORCE_INLINE size_t findFirstEscapeOut(const char *STRUCTIFY_RESTRICT data, size_t len)
+{
+  size_t i = 0;
+#if defined(STRUCTIFY_HAS_AVX2)
+  {
+    const __m256i vquote = _mm256_set1_epi8('"');
+    const __m256i vbackslash = _mm256_set1_epi8('\\');
+    const __m256i vctrl = _mm256_set1_epi8(0x0d);
+    for (; i + 32 <= len; i += 32)
+    {
+      __m256i chunk = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(data + i));
+      __m256i le_ctrl = _mm256_cmpeq_epi8(_mm256_min_epu8(chunk, vctrl), chunk);
+      __m256i is_q = _mm256_cmpeq_epi8(chunk, vquote);
+      __m256i is_b = _mm256_cmpeq_epi8(chunk, vbackslash);
+      __m256i sp = _mm256_or_si256(_mm256_or_si256(le_ctrl, is_q), is_b);
+      int mask = _mm256_movemask_epi8(sp);
+      if (mask != 0)
+        return i + bit_scan_forward((unsigned int)mask);
+    }
+  }
+#elif defined(STRUCTIFY_HAS_SSE2)
+  {
+    const __m128i vquote = _mm_set1_epi8('"');
+    const __m128i vbackslash = _mm_set1_epi8('\\');
+    const __m128i vctrl = _mm_set1_epi8(0x0d);
+    for (; i + 16 <= len; i += 16)
+    {
+      __m128i chunk = _mm_loadu_si128(reinterpret_cast<const __m128i *>(data + i));
+      __m128i le_ctrl = _mm_cmpeq_epi8(_mm_min_epu8(chunk, vctrl), chunk);
+      __m128i is_q = _mm_cmpeq_epi8(chunk, vquote);
+      __m128i is_b = _mm_cmpeq_epi8(chunk, vbackslash);
+      __m128i sp = _mm_or_si128(_mm_or_si128(le_ctrl, is_q), is_b);
+      int mask = _mm_movemask_epi8(sp);
+      if (mask != 0)
+        return i + bit_scan_forward((unsigned int)mask);
+    }
+  }
+#endif
+  for (; i < len; i++)
+  {
+    unsigned char c = static_cast<unsigned char>(data[i]);
+    if (c <= 0x0d || c == '"' || c == '\\')
+      return i;
+  }
+  return len;
+}
+
 static DataRef handle_json_escapes_out(const std::string &data, std::string &buffer)
 {
-  int start_index = 0;
-  for (size_t i = 0; i < data.size(); i++)
+  const char *d = data.data();
+  const size_t n = data.size();
+  size_t start_index = 0;
+  size_t i = 0;
+  while (i < n)
   {
-    const char cur = data[i];
-    if (static_cast<uint8_t>(cur) <= uint8_t('\r') || cur == '\"' || cur == '\\')
+    i += findFirstEscapeOut(d + i, n - i);
+    if (i >= n)
+      break;
+    const char cur = d[i];
+    if (buffer.empty())
     {
-      if (buffer.empty())
-      {
-        buffer.reserve(data.size() + 10);
-      }
-      size_t diff = i - start_index;
-      if (diff > 0)
-      {
-        buffer.insert(buffer.end(), data.data() + start_index, data.data() + start_index + diff);
-      }
-      start_index = int(i) + 1;
-
-      switch (cur)
-      {
-      case '\b':
-        buffer += std::string("\\b");
-        break;
-      case '\t':
-        buffer += std::string("\\t");
-        break;
-      case '\n':
-        buffer += std::string("\\n");
-        break;
-      case '\f':
-        buffer += std::string("\\f");
-        break;
-      case '\r':
-        buffer += std::string("\\r");
-        break;
-      case '\"':
-        buffer += std::string("\\\"");
-        break;
-      case '\\':
-        buffer += std::string("\\\\");
-        break;
-      default:
-        buffer.push_back(cur);
-        break;
-      }
+      buffer.reserve(n + 10);
     }
+    if (i > start_index)
+    {
+      buffer.insert(buffer.end(), d + start_index, d + i);
+    }
+    start_index = i + 1;
+
+    switch (cur)
+    {
+    case '\b':
+      buffer.append("\\b", 2);
+      break;
+    case '\t':
+      buffer.append("\\t", 2);
+      break;
+    case '\n':
+      buffer.append("\\n", 2);
+      break;
+    case '\f':
+      buffer.append("\\f", 2);
+      break;
+    case '\r':
+      buffer.append("\\r", 2);
+      break;
+    case '\"':
+      buffer.append("\\\"", 2);
+      break;
+    case '\\':
+      buffer.append("\\\\", 2);
+      break;
+    default:
+      buffer.push_back(cur);
+      break;
+    }
+    i++;
   }
   if (buffer.size())
   {
-    size_t diff = data.size() - start_index;
-    if (diff > 0)
+    if (n > start_index)
     {
-      buffer.insert(buffer.end(), data.data() + start_index, data.data() + start_index + diff);
+      buffer.insert(buffer.end(), d + start_index, d + n);
     }
     return DataRef(buffer.data(), buffer.size());
   }
