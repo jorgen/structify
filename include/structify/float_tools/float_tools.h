@@ -32,6 +32,8 @@
 #include <type_traits>
 #include <cmath>
 #include <assert.h>
+#include <limits>
+#include <vector>
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -85,7 +87,9 @@ namespace ft
 
   inline void left_shift(uint64_t(&a)[2], int shift)
   {
-    if (shift > int(sizeof(*a)) * 8)
+    if (shift == 0)
+      return;
+    if (shift >= int(sizeof(*a)) * 8)
     {
       auto shift_0 = (int(sizeof(uint64_t) * 8) - shift);
       if (shift_0 > 0)
@@ -534,10 +538,11 @@ namespace ft
   template<typename T>
   int count_chars(T t) noexcept
   {
-    if (iabs<T>(t) < T(10))
+    const T a = iabs<T>(t);
+    if (a < T(10))
       return 1;
     constexpr int maxChars = StaticLog10<T, std::numeric_limits<T>::max(), 0, 0, true>::get() + 1;
-    return CharsInDigit<T, maxChars, 0>::lower_bounds(iabs<T>(t)) - 1;
+    return CharsInDigit<T, maxChars, 0>::lower_bounds(a) - 1;
   }
 
   namespace ryu
@@ -623,6 +628,24 @@ namespace ft
       }
     }
 
+    static inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* hi)
+    {
+#if defined(__SIZEOF_INT128__) && !defined(FT_NO_INT128)
+      unsigned __int128 p = (unsigned __int128)a * (unsigned __int128)b;
+      *hi = uint64_t(p >> 64);
+      return uint64_t(p);
+#elif defined(_MSC_VER) && defined(_WIN64)
+      return _umul128(a, b, hi);
+#else
+      uint64_t a0 = low(a), a1 = high(a), b0 = low(b), b1 = high(b);
+      uint64_t t = a0 * b0;
+      uint64_t m = a1 * b0 + high(t);
+      uint64_t mid = a0 * b1 + low(m);
+      *hi = a1 * b1 + high(m) + high(mid);
+      return (low(mid) << 32) | low(t);
+#endif
+    }
+
     template<typename T>
     inline uint64_t multiply_and_shift(uint64_t a, const uint64_t* b, int shift_right, bool round_up)
     {
@@ -635,28 +658,14 @@ namespace ft
     template<>
     inline uint64_t multiply_and_shift<double>(uint64_t a, const uint64_t *b, int shift_right, bool round_up)
     {
-      uint64_t a0, a1, b0, b1, b2, b3, a0b0, a0b1, a0b2, a0b3, a1b0, a1b1, a1b2, a1b3;
-      a0 = low(a); a1 = high(a); b0 = low(b[0]); b1 = high(b[0]); b2 = low(b[1]); b3 = high(b[1]);
-
-      a0b0 = a0 * b0; a0b1 = a0 * b1; a0b2 = a0 * b2; a0b3 = a0 * b3; a1b0 = a1 * b0; a1b1 = a1 * b1; a1b2 = a1 * b2; a1b3 = a1 * b3;
-
-      uint64_t result[6];
-      result[0] = low(a0b0);
-      result[1] = low(a0b1) + low(a1b0) + high(a0b0);
-      result[2] = low(a0b2) + low(a1b1) + high(a0b1) + high(a1b0);
-      result[3] = low(a0b3) + low(a1b2) + high(a0b2) + high(a1b1);
-      result[4] = a1b3 + high(a0b3) + high(a1b2);
-
-      result[1] += high(result[0]);
-      result[2] += high(result[1]);
-      result[3] += high(result[2]);
-      result[4] += high(result[3]);
-      result[5] = high(result[4]);
-
-      uint64_t ret[4];
-      ret[0] = low(result[0]) | ((low(result[1]) << 32) + high(result[0]));
-      ret[1] = low(result[2]) | (low(result[3]) << 32);
-      ret[2] = low(result[4]) | (low(result[5]) << 32);
+      uint64_t ret[4] = {};
+      uint64_t hi0, hi1;
+      uint64_t lo0 = umul128(a, b[0], &hi0);
+      uint64_t lo1 = umul128(a, b[1], &hi1);
+      ret[0] = lo0;
+      uint64_t mid = hi0 + lo1;
+      ret[1] = mid;
+      ret[2] = hi1 + (mid < hi0 ? uint64_t(1) : uint64_t(0));
 
       int index = shift_right / 64;
       int shift_right_in_index = shift_right - (index * 64);
@@ -682,24 +691,10 @@ namespace ft
     template<>
     inline uint64_t multiply_and_shift<float>(uint64_t a, const uint64_t *b, int shift_right, bool round_up)
     {
-      uint64_t a0, a1, b0, b1, a0b0, a0b1, a1b0, a1b1;
-      a0 = low(a); a1 = high(a); b0 = low(*b); b1 = high(*b);
-
-      a0b0 = a0 * b0; a0b1 = a0 * b1; a1b0 = a1 * b0; a1b1 = a1 * b1;
-
-      uint64_t result[4] = {};
-      result[0] = low(a0b0);
-      result[1] = low(a0b1) + low(a1b0) + high(a0b0);
-      result[2] = low(a1b1) + high(a0b1) + high(a1b0);
-      result[3] = high(a1b1);
-
-      result[1] += high(result[0]);
-      result[2] += high(result[1]);
-      result[3] += high(result[2]);
-
-      uint64_t ret[4];
-      ret[0] = low(result[0]) | ((low(result[1]) << 32) + high(result[0]));
-      ret[1] = low(result[2]) | (low(result[3]) << 32);
+      uint64_t ret[4] = {};
+      uint64_t hi;
+      ret[0] = umul128(a, *b, &hi);
+      ret[1] = hi;
 
       int index = shift_right / 64;
       int shift_right_in_index = shift_right - (index * 64);
@@ -724,12 +719,12 @@ namespace ft
 
     inline uint64_t pow_int(int n, int exp)
     {
-      if (!exp)
+      if (exp <= 0)
         return 1;
       uint64_t ret = uint64_t(n);
-      for (int i = 0; i < exp; i++)
+      for (int i = 1; i < exp; i++)
       {
-        ret *= ret;
+        ret *= uint64_t(n);
       }
       return ret;
     }
@@ -805,15 +800,15 @@ namespace ft
         if (q && q - 1 <= float_info<T>::max_double_2_pow_q())
         {
           uint64_t mod = uint64_t(1) << int(q - 1);
-          zero[1] = (mentissa % mod) == 0;
+          zero[1] = (mentissa & (mod - 1)) == 0;
 
           if (q <= float_info<T>::max_double_2_pow_q())
           {
             mod <<= 1;
             if (mod)
             {
-              zero[0] = (u % mod) == 0;
-              zero[2] = (w % mod) == 0;
+              zero[0] = (u & (mod - 1)) == 0;
+              zero[2] = (w & (mod - 1)) == 0;
             }
           }
         }
@@ -914,7 +909,7 @@ namespace ft
           }
         }
         int index_pos = std::max(complete_digits - 1, 0);
-        for (int i = 0; i < digits_after_decimals; i++, index_pos--)
+        for (int i = 0; i < digits_after_decimals && index_pos >= 0; i++, index_pos--)
         {
           char remainder = char(significand % 10);
           significand /= 10;
@@ -922,25 +917,26 @@ namespace ft
         }
         if (print_desimal_seperator)
         {
-          if (digits_after_decimals == 0)
+          if (digits_after_decimals == 0 && index_pos >= 0)
           {
             target_buffer[index_pos--] = '0';
           }
-          target_buffer[index_pos--] = '.';
+          if (index_pos >= 0)
+            target_buffer[index_pos--] = '.';
         }
         int add_zeros_before_decimal = std::max(result.exp, 0);
-        for (int i = 0; i < add_zeros_before_decimal; i++, index_pos--)
+        for (int i = 0; i < add_zeros_before_decimal && index_pos >= 0; i++, index_pos--)
         {
           target_buffer[index_pos] = '0';
           digits_before_decimals--;
         }
-        for (int i = 0; i < digits_before_decimals; i++, index_pos--)
+        for (int i = 0; i < digits_before_decimals && index_pos >= 0; i++, index_pos--)
         {
           char remainder = char(significand % 10);
           significand /= 10;
           target_buffer[index_pos] = '0' + remainder;
         }
-        if (digits_before_decimals <= 0)
+        if (digits_before_decimals <= 0 && index_pos >= 0)
           target_buffer[index_pos] = '0';
         return complete_digits + offset;
       }
@@ -1026,12 +1022,6 @@ namespace ft
     return false;
   }
 
-  template<bool NoDigitCount>
-  inline bool shouldAccumulateDigit(int digit_count)
-  {
-    return NoDigitCount || digit_count < 19;
-  }
-
   template<typename T, bool NoDigitCount>
   inline parse_string_error parseNumber(const char* number, size_t size, parsed_string<T> &parsedString)
   {
@@ -1060,10 +1050,11 @@ namespace ft
     }
     while (current < number_end)
     {
-      if ((*current < '0' || *current > '9') && *current != '.')
+      const char c = *current;
+      if ((c < '0' || c > '9') && c != '.')
         break;
 
-      if (*current == '.')
+      if (c == '.')
       {
         if (desimal_position >= 0)
           return parse_string_error::multiple_commas;
@@ -1071,28 +1062,31 @@ namespace ft
       }
       else
       {
-        if (shouldAccumulateDigit<NoDigitCount>(parsedString.significand_digit_count))
+        bool keep_digit = NoDigitCount;
+        if (!keep_digit)
+          keep_digit = parsedString.significand_digit_count < 19;
+        if (keep_digit)
         {
-          parsedString.significand = parsedString.significand * T(10) + T(int(*current) - '0');
+          parsedString.significand = parsedString.significand * T(10) + T(int(c) - '0');
           parsedString.significand_digit_count++;
         }
         else if (increase_significand && parsedString.significand_digit_count < 20)
         {
           increase_significand = false;
-          uint64_t digit = uint64_t(*current) - '0';
+          uint64_t digit = uint64_t(c) - '0';
           static_assert(NoDigitCount || std::is_same<T, uint64_t>::value, "When NoDigitCount is used the significand type has to be uint64_t");
           auto biggest_multiplier = (std::numeric_limits<uint64_t>::max() - digit) / parsedString.significand;
 
           if (biggest_multiplier >= 10)
           {
-            parsedString.significand = static_cast<T>(parsedString.significand * uint64_t(10) + digit);
+            parsedString.significand = parsedString.significand * uint64_t(10) + digit;
             parsedString.significand_digit_count++;
           }
         }
       }
       current++;
     }
-    if (*current != 'e' && *current != 'E')
+    if (current == number_end || (*current != 'e' && *current != 'E'))
     {
       if (desimal_position >= 0)
         parsedString.exp = desimal_position - parsedString.significand_digit_count;
@@ -1126,7 +1120,8 @@ namespace ft
       if ((*current < '0' || *current > '9'))
         break;
       exponent_assigned = true;
-      exponent = exponent * 10 + (*current - '0');
+      if (exponent < 100000000)
+        exponent = exponent * 10 + (*current - '0');
       current++;
     }
     if (!exponent_assigned)
@@ -1247,6 +1242,12 @@ namespace ft
     return to_digit;
   }
 
+  template<>
+  inline float convertToNumber<float, uint64_t>(const parsed_string<uint64_t>& parsed)
+  {
+    return float(convertToNumber<double, uint64_t>(parsed));
+  }
+
   namespace ryu
   {
     template<typename T>
@@ -1260,10 +1261,9 @@ namespace ft
     inline std::string to_string(T f)
     {
       auto decoded = decode<T, uint64_t>(f);
-      std::string ret;
-      ret.resize(25);
-      ret.resize(size_t(convert_parsed_to_buffer(decoded, &ret[0], int(ret.size()), float_info<T>::str_to_float_expanded_length())));
-      return ret;
+      char buffer[25];
+      int n = convert_parsed_to_buffer(decoded, buffer, int(sizeof(buffer)), float_info<T>::str_to_float_expanded_length());
+      return std::string(buffer, size_t(n));
     }
   }
 
@@ -1319,12 +1319,23 @@ namespace ft
     template<typename T, typename SignificandType>
     inline typename std::enable_if<std::is_signed<T>::value, T>::type make_integer_return_value(SignificandType significand, bool negative)
     {
-      return negative ? -T(significand) : T(significand);
+      if (negative)
+      {
+        const SignificandType min_magnitude = SignificandType(std::numeric_limits<T>::max()) + SignificandType(1);
+        if (significand >= min_magnitude)
+          return std::numeric_limits<T>::min();
+        return -T(significand);
+      }
+      if (significand > SignificandType(std::numeric_limits<T>::max()))
+        return std::numeric_limits<T>::max();
+      return T(significand);
     }
 
     template<typename T, typename SignificandType>
     inline typename std::enable_if<std::is_unsigned<T>::value, T>::type make_integer_return_value(SignificandType significand, bool)
     {
+      if (SignificandType(significand) > SignificandType(std::numeric_limits<T>::max()))
+        return std::numeric_limits<T>::max();
       return T(significand);
     }
 
@@ -1366,7 +1377,7 @@ namespace ft
     template<typename T>
     inline parse_string_error to_integer(const char* str, size_t size, T& target, const char* (&endptr))
     {
-      using SignificandType = typename std::make_unsigned<T>::type;
+      using SignificandType = typename std::conditional<sizeof(T) <= sizeof(uint64_t), uint64_t, typename std::make_unsigned<T>::type>::type;
       parsed_string<SignificandType> ps;
       auto parseResult = parseNumber<SignificandType,true>(str, size, ps);
       endptr = ps.endptr;
@@ -1388,6 +1399,149 @@ namespace ft
     }
   }
   
+  struct big_uint_cmp
+  {
+    std::vector<uint32_t> w;
+    big_uint_cmp() : w(1, 0) {}
+    void normalize() { while (w.size() > 1 && w.back() == 0) w.pop_back(); }
+    void mul_small(uint32_t m)
+    {
+      uint64_t c = 0;
+      for (auto& x : w) { uint64_t p = uint64_t(x) * m + c; x = uint32_t(p); c = p >> 32; }
+      if (c) w.push_back(uint32_t(c));
+    }
+    void add_small(uint32_t a)
+    {
+      uint64_t c = a;
+      for (size_t i = 0; i < w.size() && c; i++) { uint64_t p = uint64_t(w[i]) + c; w[i] = uint32_t(p); c = p >> 32; }
+      if (c) w.push_back(uint32_t(c));
+    }
+    void mul_pow5(int n) { for (int i = 0; i < n; i++) mul_small(5); }
+    void shift_left(int bits)
+    {
+      int words = bits / 32, b = bits % 32;
+      if (b)
+      {
+        uint32_t c = 0;
+        for (auto& x : w) { uint64_t p = (uint64_t(x) << b) | c; x = uint32_t(p); c = uint32_t(p >> 32); }
+        if (c) w.push_back(c);
+      }
+      if (words) w.insert(w.begin(), size_t(words), 0u);
+    }
+  };
+
+  inline int compare_big(big_uint_cmp a, big_uint_cmp b)
+  {
+    a.normalize(); b.normalize();
+    if (a.w.size() != b.w.size()) return a.w.size() < b.w.size() ? -1 : 1;
+    for (size_t i = a.w.size(); i-- > 0;) if (a.w[i] != b.w[i]) return a.w[i] < b.w[i] ? -1 : 1;
+    return 0;
+  }
+
+  inline int compare_value_scaled(big_uint_cmp value_digits, int decimal_exp, big_uint_cmp mid_int, int mid_pow2)
+  {
+    int min5 = decimal_exp < 0 ? decimal_exp : 0;
+    int min2 = decimal_exp < mid_pow2 ? decimal_exp : mid_pow2;
+    big_uint_cmp l = value_digits; l.mul_pow5(decimal_exp - min5); l.shift_left(decimal_exp - min2);
+    big_uint_cmp r = mid_int;      r.mul_pow5(0 - min5);           r.shift_left(mid_pow2 - min2);
+    return compare_big(l, r);
+  }
+
+  inline void float_to_int_pow2(float g, big_uint_cmp& m, int& e2)
+  {
+    uint32_t b;
+    memcpy(&b, &g, sizeof(b));
+    uint32_t ce = (b >> 23) & 0xff, mant = b & 0x7fffff;
+    m = big_uint_cmp();
+    m.w[0] = ce ? (mant | 0x800000) : mant;
+    e2 = ce ? int(ce) - 150 : -149;
+  }
+
+  inline void float_pair_midpoint(float g1, float g2, big_uint_cmp& mid_int, int& mid_pow2)
+  {
+    big_uint_cmp m1, m2; int e1, e2;
+    float_to_int_pow2(g1, m1, e1); float_to_int_pow2(g2, m2, e2);
+    int emin = e1 < e2 ? e1 : e2;
+    m1.shift_left(e1 - emin); m2.shift_left(e2 - emin);
+    size_t n = m1.w.size() > m2.w.size() ? m1.w.size() : m2.w.size();
+    m1.w.resize(n, 0);
+    uint64_t c = 0;
+    for (size_t i = 0; i < n; i++) { uint64_t p = uint64_t(m1.w[i]) + (i < m2.w.size() ? m2.w[i] : 0) + c; m1.w[i] = uint32_t(p); c = p >> 32; }
+    if (c) m1.w.push_back(uint32_t(c));
+    mid_int = m1; mid_pow2 = emin - 1;
+  }
+
+  inline bool float_mantissa_is_even(float g)
+  {
+    uint32_t b;
+    memcpy(&b, &g, sizeof(b));
+    return (b & 1) == 0;
+  }
+
+  inline float correctly_round_float(const char* str, size_t size, double d, float f)
+  {
+    if (f != f || f == 0.0f)
+      return f;
+    float af = f < 0.0f ? -f : f;
+    if (!std::isfinite(af))
+      return f;
+    double ad = d < 0.0 ? -d : d;
+    float up = std::nextafter(af, std::numeric_limits<float>::infinity());
+    float dn = std::nextafter(af, 0.0f);
+    bool have_up = up > af && std::isfinite(up);
+    double ulp_d = std::nextafter(ad, std::numeric_limits<double>::infinity()) - ad;
+    bool near_hi = have_up && std::fabs(ad - 0.5 * (double(af) + double(up))) <= 4.0 * ulp_d;
+    bool near_lo = std::fabs(ad - 0.5 * (double(dn) + double(af))) <= 4.0 * ulp_d;
+    if (!near_hi && !near_lo)
+      return f;
+
+    const char* p = str;
+    const char* end = str + size;
+    while (p < end && is_space(*p)) p++;
+    if (p < end && (*p == '-' || *p == '+')) p++;
+    big_uint_cmp digits;
+    int fracdigits = 0;
+    bool seen_dot = false;
+    for (; p < end; ++p)
+    {
+      char c = *p;
+      if (c == '.') { if (seen_dot) break; seen_dot = true; continue; }
+      if (c < '0' || c > '9') break;
+      digits.mul_small(10);
+      digits.add_small(uint32_t(c - '0'));
+      if (seen_dot) fracdigits++;
+    }
+    int decimal_exp = -fracdigits;
+    if (p < end && (*p == 'e' || *p == 'E'))
+    {
+      p++;
+      bool en = false;
+      if (p < end && (*p == '-' || *p == '+')) { en = (*p == '-'); p++; }
+      int ex = 0;
+      while (p < end && *p >= '0' && *p <= '9') { ex = ex * 10 + (*p - '0'); p++; }
+      decimal_exp += en ? -ex : ex;
+    }
+
+    float mag = af;
+    if (near_hi)
+    {
+      big_uint_cmp mid; int e2;
+      float_pair_midpoint(af, up, mid, e2);
+      int c = compare_value_scaled(digits, decimal_exp, mid, e2);
+      if (c > 0) mag = up;
+      else if (c == 0) mag = float_mantissa_is_even(af) ? af : up;
+    }
+    if (mag == af && near_lo)
+    {
+      big_uint_cmp mid; int e2;
+      float_pair_midpoint(dn, af, mid, e2);
+      int c = compare_value_scaled(digits, decimal_exp, mid, e2);
+      if (c < 0) mag = dn;
+      else if (c == 0) mag = float_mantissa_is_even(dn) ? dn : af;
+    }
+    return std::signbit(f) ? -mag : mag;
+  }
+
   template<typename T>
   inline parse_string_error to_ieee_t(const char* str, size_t size, T &target, const char *(&endptr))
   {
@@ -1401,6 +1555,24 @@ namespace ft
     else
     {
       target = convertToNumber<T>(ps);
+    }
+    return parseResult;
+  }
+
+  template<>
+  inline parse_string_error to_ieee_t<float>(const char* str, size_t size, float &target, const char *(&endptr))
+  {
+    parsed_string<uint64_t> ps;
+    auto parseResult = parseNumber<uint64_t, false>(str, size, ps);
+    endptr = ps.endptr;
+    if (parseResult != parse_string_error::ok)
+    {
+      target = make_nan<float>(true, 1);
+    }
+    else
+    {
+      double d = convertToNumber<double, uint64_t>(ps);
+      target = correctly_round_float(str, size, d, float(d));
     }
     return parseResult;
   }
