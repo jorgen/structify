@@ -366,6 +366,11 @@ struct TypeHandler<std::optional<T>>
 public:
   static inline Error to(std::optional<T> &to_type, ParseContext &context)
   {
+    if (context.token.value_type == Type::Null)
+    {
+      to_type.reset();
+      return Error::NoError;
+    }
     to_type.emplace();
     return TypeHandler<T>::to(to_type.value(), context);
   }

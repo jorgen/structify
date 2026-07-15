@@ -59,4 +59,22 @@ TEST_CASE("test_optional", "[structify]")
   }
 #endif
 }
+
+#ifdef STFY_STD_OPTIONAL
+TEST_CASE("test_optional_explicit_null", "[structify]")
+{
+  const char json_null[] = R"json({ "a": 5, "b": null, "c": null, "d": "kept" })json";
+  STFY::ParseContext context(json_null);
+  SmallStructStd data;
+  data.b = 9.9f;
+  data.c = "old";
+  auto error = context.parseTo(data);
+  REQUIRE(error == STFY::Error::NoError);
+  REQUIRE(data.a == 5);
+  REQUIRE_FALSE(data.b.has_value());
+  REQUIRE_FALSE(data.c.has_value());
+  REQUIRE(data.d.has_value());
+  REQUIRE(data.d.value() == "kept");
+}
+#endif
 } // namespace
