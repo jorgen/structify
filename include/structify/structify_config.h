@@ -236,25 +236,45 @@
 #define STRUCTIFY_RESTRICT
 #endif
 
-#if defined(__aarch64__) || defined(_M_ARM64)
+// Gated on the COMPILER as well as the architecture: _M_ARM64 is MSVC's macro,
+// so an architecture-only check sent MSVC/ARM64 into a branch using
+// __builtin_prefetch, which it does not have. MSVC has its own intrinsics.
+#if (defined(__aarch64__) || defined(_M_ARM64)) && (defined(__GNUC__) || defined(__clang__))
 #define STRUCTIFY_PREFETCH(ptr) __builtin_prefetch(ptr, 0, 3); __builtin_prefetch((char*)(ptr) + 64, 0, 3)
 #define STRUCTIFY_PREFETCH_WRITE(ptr) __builtin_prefetch(ptr, 1, 3)
 #elif defined(__GNUC__) || defined(__clang__)
 #define STRUCTIFY_PREFETCH(ptr) __builtin_prefetch(ptr, 0, 3)
 #define STRUCTIFY_PREFETCH_WRITE(ptr) __builtin_prefetch(ptr, 1, 3)
+#elif defined(_MSC_VER) && defined(_M_ARM64)
+#define STRUCTIFY_PREFETCH(ptr) __prefetch((const void *)(ptr)); __prefetch((const char *)(ptr) + 64)
+#define STRUCTIFY_PREFETCH_WRITE(ptr) __prefetch((const void *)(ptr))
+#elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+#define STRUCTIFY_PREFETCH(ptr) _mm_prefetch((const char *)(ptr), _MM_HINT_T0)
+#define STRUCTIFY_PREFETCH_WRITE(ptr) _mm_prefetch((const char *)(ptr), _MM_HINT_T0)
 #else
 #define STRUCTIFY_PREFETCH(ptr) ((void)0)
 #define STRUCTIFY_PREFETCH_WRITE(ptr) ((void)0)
 #endif
 
-#if defined(__aarch64__) || defined(_M_ARM64)
 #define STRUCTIFY_CACHE_LINE_SIZE 64
+
+// The same hazard as above: these expanded to GNU attributes and inline asm
+// whatever the compiler, so they would not build under MSVC on any
+// architecture. Nothing uses them yet, which is the only reason it never showed.
+#if defined(__GNUC__) || defined(__clang__)
 #define STRUCTIFY_ALIGN_CACHE __attribute__((aligned(STRUCTIFY_CACHE_LINE_SIZE)))
-#define STRUCTIFY_MEMORY_BARRIER() __asm__ __volatile__("dsb sy" ::: "memory")
+#elif defined(_MSC_VER)
+#define STRUCTIFY_ALIGN_CACHE __declspec(align(STRUCTIFY_CACHE_LINE_SIZE))
 #else
-#define STRUCTIFY_CACHE_LINE_SIZE 64
-#define STRUCTIFY_ALIGN_CACHE __attribute__((aligned(STRUCTIFY_CACHE_LINE_SIZE)))
+#define STRUCTIFY_ALIGN_CACHE alignas(STRUCTIFY_CACHE_LINE_SIZE)
+#endif
+
+#if defined(__aarch64__) && (defined(__GNUC__) || defined(__clang__))
+#define STRUCTIFY_MEMORY_BARRIER() __asm__ __volatile__("dsb sy" ::: "memory")
+#elif defined(__GNUC__) || defined(__clang__)
 #define STRUCTIFY_MEMORY_BARRIER() __asm__ __volatile__("" ::: "memory")
+#else
+#define STRUCTIFY_MEMORY_BARRIER() std::atomic_thread_fence(std::memory_order_seq_cst)
 #endif
 
 #ifndef STFY
