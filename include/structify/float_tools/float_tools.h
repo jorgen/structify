@@ -637,8 +637,13 @@ namespace ft
       __extension__ unsigned __int128 p = (unsigned __int128)a * (unsigned __int128)b;
       *hi = uint64_t(p >> 64);
       return uint64_t(p);
-#elif defined(_MSC_VER) && defined(_WIN64)
+#elif defined(_MSC_VER) && defined(_M_X64)
       return _umul128(a, b, hi);
+#elif defined(_MSC_VER) && defined(_M_ARM64)
+      // _WIN64 is also defined on ARM64, but _umul128 is an x64-only
+      // intrinsic; ARM64 spells the high half __umulh.
+      *hi = __umulh(a, b);
+      return a * b;
 #else
       uint64_t a0 = low(a), a1 = high(a), b0 = low(b), b1 = high(b);
       uint64_t t = a0 * b0;
